@@ -10,6 +10,7 @@ import { openAIService, generateOfflineNeuralResponse } from '../services/openai
 import { mcpService } from '../services/mcp';
 import { terminalService } from '../services/terminal';
 import { runPythonDataAnalysis, generateExcelWorkbook } from '../services/excelExporter';
+import { readUploadedFile } from '../services/excelReader';
 import { UploadedDocument } from './FilesPanel';
 
 const orb = { fontFamily: 'Orbitron, sans-serif' };
@@ -61,21 +62,20 @@ export function CommandConsole() {
     endRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, isTyping, streamingText]);
 
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files || files.length === 0) return;
     const file = files[0];
     sounds.playClick();
 
-    const reader = new FileReader();
-    reader.onload = event => {
-      const content = (event.target?.result as string) || '';
+    try {
+      const parsed = await readUploadedFile(file);
       const doc: UploadedDocument = {
         id: `doc_${Date.now()}`,
-        name: file.name,
-        size: file.size,
-        type: file.type || 'text/plain',
-        content,
+        name: parsed.name,
+        size: parsed.size,
+        type: parsed.type,
+        content: parsed.content,
         uploadedAt: new Date(),
         status: 'ready',
       };
@@ -84,11 +84,17 @@ export function CommandConsole() {
       sounds.playSuccess();
       addNotification({
         type: 'success',
-        title: 'Đã đính kèm file',
-        message: `Tài liệu "${file.name}" đã được đính kèm vào lượt chat.`,
+        title: 'Đã nạp & giải mã tệp',
+        message: `Tài liệu "${file.name}" (${(file.size / 1024).toFixed(1)} KB) đã sẵn sàng để phân tích.`,
       });
-    };
-    reader.readAsText(file);
+    } catch (err: any) {
+      sounds.playError();
+      addNotification({
+        type: 'error',
+        title: 'Lỗi đọc tệp',
+        message: `Không thể đọc file "${file.name}": ${err.message}`,
+      });
+    }
   };
 
   const handleProcessMessage = async (userText: string) => {

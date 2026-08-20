@@ -3,6 +3,7 @@
 import { terminalService } from './terminal';
 import { cacheService } from './cache';
 import { runPythonDataAnalysis, generateExcelWorkbook } from './excelExporter';
+import { parseExcelFile } from './excelReader';
 
 export interface MCPToolParameter {
   type: string;
@@ -689,6 +690,34 @@ export class MCPService {
           sizeKb: excelRes.sizeKb,
           dataUrl: excelRes.dataUrl,
           message: `Đã tạo tệp Excel "${excelRes.filename}" (${excelRes.sizeKb} KB) thành công.`,
+        };
+      },
+    });
+
+    // 16. Binary Excel & Spreadsheet Reader (.xlsx, .xls, .ods, .csv)
+    this.registerTool({
+      name: 'kim_excel_reader',
+      description: 'Đọc, bóc tách và giải mã toàn bộ nội dung tệp Excel nhị phân (.xlsx, .xls, .ods, .csv), trích xuất danh sách sheet, tiêu đề cột, bảng dữ liệu và thống kê số liệu.',
+      parameters: {
+        type: 'object',
+        properties: {
+          fileData: { type: 'string', description: 'Chuỗi Base64, Data URL hoặc nội dung CSV của tệp Excel' },
+          filename: { type: 'string', description: 'Tên tệp Excel (mặc định data.xlsx)' },
+        },
+        required: ['fileData'],
+      },
+      serverId: builtinServer.id,
+      enabled: true,
+      isBuiltin: true,
+      handler: async (args: { fileData: string; filename?: string }) => {
+        const parsed = await parseExcelFile(args.fileData, args.filename || 'data.xlsx');
+        return {
+          filename: parsed.filename,
+          sheetNames: parsed.sheetNames,
+          totalSheets: parsed.totalSheets,
+          textSummary: parsed.textSummary,
+          fullMarkdown: parsed.fullMarkdown,
+          message: `Đã giải mã thành công tệp Excel "${parsed.filename}" gồm ${parsed.totalSheets} sheet (${parsed.sheetNames.join(', ')}).`,
         };
       },
     });

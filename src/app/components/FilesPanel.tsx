@@ -8,6 +8,7 @@ import {
 import { useApp } from '../context/AppContext';
 import { sounds } from '../services/sound';
 import { openAIService } from '../services/openai';
+import { readUploadedFile } from '../services/excelReader';
 
 const orb = { fontFamily: 'Orbitron, sans-serif' };
 const mono = { fontFamily: 'Share Tech Mono, monospace' };
@@ -42,20 +43,19 @@ export function FilesPanel() {
 
   const activeDoc = uploadedFiles.find(f => f.id === activeFileId) || uploadedFiles[0] || null;
 
-  const handleFileUpload = (files: FileList | null) => {
+  const handleFileUpload = async (files: FileList | null) => {
     if (!files || files.length === 0) return;
     sounds.playClick();
 
-    Array.from(files).forEach(file => {
-      const reader = new FileReader();
-      reader.onload = e => {
-        const content = (e.target?.result as string) || '';
+    for (const file of Array.from(files)) {
+      try {
+        const parsed = await readUploadedFile(file);
         const newDoc: UploadedDocument = {
           id: `doc_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
-          name: file.name,
-          size: file.size,
-          type: file.type || file.name.split('.').pop() || 'text/plain',
-          content,
+          name: parsed.name,
+          size: parsed.size,
+          type: parsed.type,
+          content: parsed.content,
           uploadedAt: new Date(),
           status: 'ready',
         };
@@ -65,17 +65,18 @@ export function FilesPanel() {
         sounds.playSuccess();
         addNotification({
           type: 'success',
-          title: 'Tải tài liệu thành công',
-          message: `Đã nạp file "${file.name}" (${(file.size / 1024).toFixed(1)} KB) vào bộ nhớ Thư Ký Kim.`,
+          title: 'Tải & Bóc tách thành công',
+          message: `Đã đọc và giải mã file "${file.name}" (${(file.size / 1024).toFixed(1)} KB) vào bộ nhớ Thư Ký Kim.`,
         });
-      };
-
-      if (file.type.includes('text') || file.name.endsWith('.txt') || file.name.endsWith('.md') || file.name.endsWith('.json') || file.name.endsWith('.ts') || file.name.endsWith('.js') || file.name.endsWith('.py') || file.name.endsWith('.csv') || file.name.endsWith('.html') || file.name.endsWith('.css')) {
-        reader.readAsText(file);
-      } else {
-        reader.readAsText(file); // Text fallback
+      } catch (err: any) {
+        sounds.playError();
+        addNotification({
+          type: 'error',
+          title: 'Lỗi đọc tệp',
+          message: `Không thể giải mã file "${file.name}": ${err.message}`,
+        });
       }
-    });
+    }
   };
 
   const handleSystematize = async (mode: 'structure' | 'extract' | 'summary') => {
