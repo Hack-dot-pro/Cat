@@ -163,9 +163,9 @@ export function VoiceBar() {
               </div>
             </div>
 
-            {/* Live Transcript or Hint */}
+            {/* Live Transcript */}
             <div className="flex-1 max-w-xl flex items-center justify-end">
-              {speechTranscript ? (
+              {speechTranscript && (
                 <motion.div
                   initial={{ opacity: 0, y: 3 }}
                   animate={{ opacity: 1, y: 0 }}
@@ -175,10 +175,6 @@ export function VoiceBar() {
                     "{speechTranscript}"
                   </span>
                 </motion.div>
-              ) : (
-                <span style={{ ...aptos, color: 'rgba(255,255,255,0.4)', fontSize: '12px' }}>
-                  Nói lệnh trực tiếp hoặc gọi "Kim" / "Thư Ký Kim" (Tự động nhận diện sau 1s ngắt giọng)
-                </span>
               )}
             </div>
           </motion.div>
