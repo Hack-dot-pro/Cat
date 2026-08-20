@@ -267,7 +267,7 @@ class KimVoiceEngine {
    * Test current voice configuration
    */
   public testVoice() {
-    this.speak('Dạ, em chào Sếp Vinh! Em là Thư Ký Kim, trợ lý ảo thông minh của sếp. Em luôn sẵn sàng hỗ trợ sếp mọi lúc ạ!');
+    this.speak('Dạ, em chào anh Vinh! Em là Thư Ký Kim, trợ lý ảo của anh. Em luôn sẵn sàng lắng nghe và hỗ trợ anh mọi lúc ạ!');
   }
 }
 

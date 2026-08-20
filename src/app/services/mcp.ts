@@ -106,7 +106,7 @@ export class MCPService {
         const perf = performance.now();
         return {
           system: 'Thư Ký Kim OS v3.8 (Holographic Assistant Engine)',
-          user: 'Vinh_Admin (Sếp Vinh)',
+          user: 'Vinh_Admin (Anh Vinh)',
           status: 'OPTIMAL',
           uptime: `${Math.floor(perf / 60000)} phút ${Math.floor((perf % 60000) / 1000)} giây`,
           memory: {

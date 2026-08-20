@@ -148,7 +148,7 @@ export function FilesPanel() {
     });
     addMessage({
       type: 'ai',
-      text: `Dạ sếp! Em đã tiếp nhận tài liệu **${activeDoc.name}** (${(activeDoc.size / 1024).toFixed(1)} KB, ~${Math.ceil(activeDoc.content.length / 3.5)} tokens). Sếp cứ hỏi bất kỳ thông tin nào cần bóc tách nhé ạ!`,
+      text: `Dạ anh! Em đã tiếp nhận tài liệu **${activeDoc.name}** (${(activeDoc.size / 1024).toFixed(1)} KB, ~${Math.ceil(activeDoc.content.length / 3.5)} tokens). Anh cứ hỏi bất kỳ thông tin nào cần bóc tách nhé ạ!`,
     });
     setFilesOpen(false);
   };

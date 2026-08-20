@@ -101,7 +101,7 @@ const initialMessages: Message[] = [
   {
     id: '1',
     type: 'ai',
-    text: 'Dạ, em chào **Sếp Vinh** (Vinh_Admin)! Em là **Thư Ký Kim** — Trợ lý ảo AI của sếp. Hệ điều hành Hologram và giọng đọc nữ ngọt ngào đã sẵn sàng. Sếp cần em hỗ trợ công việc gì hôm nay ạ?',
+    text: 'Dạ, em chào **anh Vinh**! Em là **Thư Ký Kim** — Trợ lý ảo AI của anh. Hệ điều hành Hologram và giọng đọc nữ ngọt ngào đã sẵn sàng. Hôm nay anh cần em hỗ trợ công việc gì ạ?',
     timestamp: new Date(Date.now() - 8000),
   },
   {
@@ -113,7 +113,7 @@ const initialMessages: Message[] = [
   {
     id: '3',
     type: 'ai',
-    text: 'Dạ sếp, em đã kiểm tra xong: CPU đang ở mức 38% ổn định, bộ nhớ 6.2GB/16GB, độ trễ kết nối Gateway Xkiro là 18ms. Toàn bộ 6 công cụ MCP và hệ thống nhận diện giọng nói đã sẵn sàng phục vụ sếp ạ!',
+    text: 'Dạ anh Vinh, em đã kiểm tra xong: CPU đang ở mức 38% ổn định, bộ nhớ 6.2GB/16GB, độ trễ kết nối Gateway Xkiro là 18ms. Toàn bộ 6 công cụ MCP và hệ thống nhận diện giọng nói đã sẵn sàng phục vụ anh ạ!',
     timestamp: new Date(Date.now() - 3000),
   },
 ];
@@ -145,9 +145,9 @@ const initialMemories: MemoryItem[] = [
   },
   {
     id: '4',
-    title: 'Thông tin Quản trị viên (Sếp Vinh)',
-    content: 'Người dùng: Vinh | Username: Vinh_Admin | Quyền hạn: Sếp / Quản trị viên tối cao của Thư Ký Kim.',
-    tags: ['admin', 'vinh', 'profile'],
+    title: 'Quy tắc xưng hô',
+    content: 'Người dùng: Anh Vinh | Username: Vinh_Admin | Xưng hô: Thư Ký Kim luôn xưng "em" và gọi người dùng là "anh" (anh Vinh).',
+    tags: ['admin', 'vinh', 'profile', 'xưng_hô'],
     timestamp: new Date(Date.now() - 3600000 * 2),
     synced: true,
   },
@@ -278,7 +278,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
       setTimeout(() => setAiState('idle'), 2000);
     } catch (err) {
-      const fallback = `Dạ sếp Vinh, em đã nhận lệnh giọng nói: "${raw}". Thư Ký Kim đang xử lý ngay cho sếp ạ!`;
+      const fallback = `Dạ anh Vinh, em đã nhận lệnh giọng nói: "${raw}". Thư Ký Kim đang xử lý ngay cho anh ạ!`;
       setAiState('responding');
       setMessages(prev => [...prev, { id: Date.now().toString(), type: 'ai', text: fallback, timestamp: new Date() }]);
 

@@ -144,11 +144,11 @@ export function CommandConsole() {
     } catch (err: any) {
       console.warn('API Completion failed, using offline neural fallback:', err);
       // Offline fallback
-      let fallbackResponse = `Dạ sếp ${userName}! Em đã tiếp nhận yêu cầu của sếp rồi ạ. `;
+      let fallbackResponse = `Dạ anh ${userName}! Em đã tiếp nhận yêu cầu của anh rồi ạ. `;
       if (attachedFile) {
         fallbackResponse += `Em đã kiểm tra tài liệu **${attachedFile.name}** (~${Math.ceil(attachedFile.content.length / 3.2)} tokens). `;
       }
-      fallbackResponse += `Thư Ký Kim đang kết nối qua Gateway Xkiro (https://api.xkiro.com/v1). Sếp có thể tùy chỉnh cài đặt bất cứ lúc nào ở biểu tượng bánh răng ạ!`;
+      fallbackResponse += `Thư Ký Kim đang kết nối qua Gateway Xkiro (https://api.xkiro.com/v1). Anh có thể tùy chỉnh cài đặt bất cứ lúc nào ở biểu tượng bánh răng ạ!`;
 
       setStreamingText('');
       setIsTyping(false);
@@ -295,7 +295,7 @@ export function CommandConsole() {
                         letterSpacing: '0.1em',
                       }}
                     >
-                      {msg.type === 'ai' ? 'THƯ KÝ KIM' : `${userName} (SẾP)`}
+                      {msg.type === 'ai' ? 'THƯ KÝ KIM' : `${userName} (ANH VINH)`}
                     </span>
                     {msg.type === 'ai' && (
                       <button
