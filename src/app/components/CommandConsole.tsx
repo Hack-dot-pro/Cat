@@ -107,10 +107,61 @@ export function CommandConsole() {
       setTimeout(() => setMcpOpen(true), 800);
     }
 
+    // 1. Detect if Web Browsing or Live Search is needed
+    const urlMatch = userText.match(/https?:\/\/[^\s]+/i);
+    const isSearchIntent =
+      lower.includes('tìm') ||
+      lower.includes('tra cứu') ||
+      lower.includes('tin tức') ||
+      lower.includes('thời sự') ||
+      lower.includes('thời tiết') ||
+      lower.includes('giá vàng') ||
+      lower.includes('chứng khoán') ||
+      lower.includes('mới nhất') ||
+      lower.includes('hôm nay') ||
+      lower.includes('wikipedia') ||
+      lower.includes('trên mạng') ||
+      lower.includes('trên internet') ||
+      lower.includes('trang web') ||
+      lower.includes('github') ||
+      lower.includes('báo');
+
+    let webContext = '';
+
+    if (urlMatch) {
+      const url = urlMatch[0];
+      setStreamingText(`🌐 Thư Ký Kim đang đọc tài liệu web từ: ${url}...`);
+      try {
+        const browseRes = await mcpService.executeTool('kim_web_browse', { url });
+        if (browseRes.success && browseRes.result?.content) {
+          webContext = `\n\n[DỮ LIỆU TÀI LIỆU WEB TRÍCH XUẤT TỪ: ${url}]\nTiêu đề: ${browseRes.result.title}\nNội dung:\n${browseRes.result.content}\n`;
+        }
+      } catch {
+        // Continue
+      }
+    } else if (isSearchIntent) {
+      setStreamingText(`🔍 Thư Ký Kim đang tìm kiếm dữ liệu trên Internet cho anh...`);
+      try {
+        const cleanQuery = userText
+          .replace(/^(kim|thư ký kim|em kim|kim ơi)[,\s]*/i, '')
+          .replace(/^(tìm|tra cứu|xem|kiểm tra|tìm kiếm|cho em biết|cho anh biết)[,\s]*/i, '')
+          .trim();
+        const searchRes = await mcpService.executeTool('kim_web_search', { query: cleanQuery || userText });
+        if (searchRes.success && searchRes.result?.results?.length > 0) {
+          const formattedResults = searchRes.result.results
+            .map((r: any, idx: number) => `[Nguồn ${idx + 1}: ${r.title}] (${r.url})\n${r.snippet}`)
+            .join('\n\n');
+          webContext = `\n\n[KẾT QUẢ TRA CỨU WEB THỜI GIAN THỰC]\n${formattedResults}\n(Hãy sử dụng dữ liệu trên để tổng hợp, phân tích và phản hồi đầy đủ, chính xác, kèm trích dẫn đường link cho anh Vinh.)\n`;
+        }
+      } catch {
+        // Continue
+      }
+    }
+
     // Prepare message history for OpenAI chat completions
-    let promptContent = userText;
+    let promptContent = userText + webContext;
     if (attachedFile) {
-      promptContent = `[Tài liệu đính kèm: "${attachedFile.name}" (${(attachedFile.size / 1024).toFixed(1)} KB)]\n--- NỘI DUNG TÀI LIỆU ---\n${attachedFile.content.slice(0, 10000)}\n\n--- YÊU CẦU CỦA ${userName} (${userFullName}) ---\n${userText}`;
+      promptContent = `[Tài liệu đính kèm: "${attachedFile.name}" (${(attachedFile.size / 1024).toFixed(1)} KB)]\n--- NỘI DUNG TÀI LIỆU ---\n${attachedFile.content.slice(0, 10000)}\n\n--- YÊU CẦU CỦA ${userName} (${userFullName}) ---\n${userText}${webContext}`;
     }
 
     const historyPayload = messages.slice(-8).map(m => ({
@@ -134,6 +185,13 @@ export function CommandConsole() {
           accumulated = full;
           setStreamingText(full);
         },
+        onFallbackTriggered: (fallbackName, originalError) => {
+          addNotification({
+            type: 'warning',
+            title: 'Tự động kích hoạt API dự phòng',
+            message: `Cổng chính bận, Thư Ký Kim đang chuyển sang: ${fallbackName}`,
+          });
+        },
       });
 
       setStreamingText('');
@@ -148,7 +206,7 @@ export function CommandConsole() {
       if (attachedFile) {
         fallbackResponse += `Em đã kiểm tra tài liệu **${attachedFile.name}** (~${Math.ceil(attachedFile.content.length / 3.2)} tokens). `;
       }
-      fallbackResponse += `Thư Ký Kim đang kết nối qua Gateway Xkiro (https://api.xkiro.com/v1). Anh có thể tùy chỉnh cài đặt bất cứ lúc nào ở biểu tượng bánh răng ạ!`;
+      fallbackResponse += `Thư Ký Kim đang kết nối qua Gateway Xkiro (https://api.xkiro.com/v1) cùng hệ thống API dự phòng. Anh có thể kiểm tra hoặc thêm API Key dự phòng ở Cài đặt ạ!`;
 
       setStreamingText('');
       setIsTyping(false);

@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import {
   X, User, Brain, Key, Shield, Eye, EyeOff, ChevronDown,
   CheckCircle, AlertCircle, Save, RotateCcw, Lock, Volume2,
-  Cpu, Wrench, RefreshCw, Play, Globe, Zap, Bot, VolumeX
+  Cpu, Wrench, RefreshCw, Play, Globe, Zap, Bot, VolumeX, Plus, Trash2, ExternalLink
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { sounds } from '../services/sound';
@@ -12,7 +12,8 @@ import {
   openAIService,
   PROVIDER_PRESETS,
   AIProvider,
-  AISettings
+  AISettings,
+  FallbackEndpoint
 } from '../services/openai';
 import { mcpService } from '../services/mcp';
 
@@ -20,14 +21,16 @@ const orb = { fontFamily: 'Orbitron, sans-serif' };
 const mono = { fontFamily: 'Share Tech Mono, monospace' };
 const aptos = { fontFamily: "'Aptos Narrow', 'Aptos', sans-serif" };
 
-type Section = 'user' | 'ai' | 'mcp' | 'sound' | 'security';
+type Section = 'user' | 'ai' | 'fallback' | 'web' | 'mcp' | 'sound' | 'security';
 
 const SECTIONS: { id: Section; label: string; icon: React.ElementType; color: string }[] = [
   { id: 'user', label: 'HỒ SƠ NGƯỜI DÙNG', icon: User, color: '#00f5ff' },
   { id: 'ai', label: 'CẤU HÌNH AI & GATEWAY', icon: Brain, color: '#a855f7' },
+  { id: 'fallback', label: 'CỔNG API DỰ PHÒNG (FAILOVER)', icon: Zap, color: '#f59e0b' },
+  { id: 'web', label: 'DUYỆT WEB & TÀI LIỆU', icon: Globe, color: '#0ea5e9' },
   { id: 'mcp', label: 'GIAO THỨC MCP', icon: Wrench, color: '#22c55e' },
-  { id: 'sound', label: 'ÂM THANH & GIỌNG ĐỌC', icon: Volume2, color: '#0ea5e9' },
-  { id: 'security', label: 'BẢO MẬT & MÃ HÓA', icon: Shield, color: '#f59e0b' },
+  { id: 'sound', label: 'ÂM THANH & GIỌNG ĐỌC', icon: Volume2, color: '#ec4899' },
+  { id: 'security', label: 'BẢO MẬT & MÃ HÓA', icon: Shield, color: '#64748b' },
 ];
 
 function Field({
@@ -80,13 +83,9 @@ function Field({
               sounds.playClick();
               setShow(!show);
             }}
-            className="cursor-pointer p-1"
+            className="text-gray-400 hover:text-cyan-400 p-1 cursor-pointer"
           >
-            {show ? (
-              <EyeOff className="w-4 h-4 text-cyan-400" />
-            ) : (
-              <Eye className="w-4 h-4 text-gray-400" />
-            )}
+            {show ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
           </button>
         )}
       </div>
@@ -107,7 +106,7 @@ function Toggle({
 }) {
   return (
     <div className="flex items-center justify-between py-2">
-      <span style={{ ...aptos, color: 'rgba(255,255,255,0.8)', fontSize: '13px' }}>{label}</span>
+      <span style={{ ...aptos, color: 'rgba(255,255,255,0.85)', fontSize: '13px' }}>{label}</span>
       <motion.button
         onClick={() => {
           sounds.playClick();
@@ -181,6 +180,22 @@ export function SettingsPanel() {
   const [testingConnection, setTestingConnection] = useState(false);
   const [testResult, setTestResult] = useState<{ success: boolean; message: string; latencyMs: number } | null>(null);
 
+  // Multi-API Fallback States
+  const [autoFallbackEnabled, setAutoFallbackEnabled] = useState<boolean>(aiSettings.autoFallbackEnabled ?? true);
+  const [fallbackEndpoints, setFallbackEndpoints] = useState<FallbackEndpoint[]>(aiSettings.fallbackEndpoints || []);
+  const [testingFallbackId, setTestingFallbackId] = useState<string | null>(null);
+
+  // New Fallback Form
+  const [newFbName, setNewFbName] = useState('');
+  const [newFbProvider, setNewFbProvider] = useState<AIProvider>('openrouter');
+  const [newFbBaseUrl, setNewFbBaseUrl] = useState('https://openrouter.ai/api/v1');
+  const [newFbApiKey, setNewFbApiKey] = useState('');
+  const [newFbModel, setNewFbModel] = useState('deepseek/deepseek-r1');
+  const [showAddFbForm, setShowAddFbForm] = useState(false);
+
+  // Web Browsing & Online Research State
+  const [webSearchEnabled, setWebSearchEnabled] = useState<boolean>(aiSettings.webSearchEnabled ?? true);
+
   // Security
   const [encEnabled, setEncEnabled] = useState(true);
   const [biometrics, setBiometrics] = useState(true);
@@ -220,7 +235,7 @@ export function SettingsPanel() {
       sounds.playSuccess();
       addNotification({
         type: 'success',
-        title: 'Kết nối API thành công',
+        title: 'Kết nối API chính thành công',
         message: `${result.message} (${result.latencyMs}ms)`,
       });
     } else {
@@ -231,6 +246,89 @@ export function SettingsPanel() {
         message: result.message,
       });
     }
+  };
+
+  const handleTestFallbackEndpoint = async (ep: FallbackEndpoint) => {
+    sounds.playScan();
+    setTestingFallbackId(ep.id);
+
+    const result = await openAIService.testEndpoint({
+      baseUrl: ep.baseUrl,
+      apiKey: ep.apiKey,
+      model: ep.model,
+      name: ep.name,
+    });
+
+    setTestingFallbackId(null);
+
+    setFallbackEndpoints(prev =>
+      prev.map(item =>
+        item.id === ep.id
+          ? {
+              ...item,
+              lastLatencyMs: result.latencyMs,
+              lastTestedAt: new Date().toLocaleTimeString('vi-VN'),
+              lastStatus: result.success ? 'connected' : 'error',
+            }
+          : item
+      )
+    );
+
+    if (result.success) {
+      sounds.playSuccess();
+      addNotification({
+        type: 'success',
+        title: `Cổng ${ep.name} trực tuyến`,
+        message: `Độ trễ: ${result.latencyMs}ms`,
+      });
+    } else {
+      sounds.playError();
+      addNotification({
+        type: 'error',
+        title: `Cổng ${ep.name} không kết nối được`,
+        message: result.message,
+      });
+    }
+  };
+
+  const handleAddFallbackEndpoint = () => {
+    if (!newFbBaseUrl.trim()) return;
+    sounds.playSuccess();
+
+    const newEndpoint: FallbackEndpoint = {
+      id: 'custom_fb_' + Date.now(),
+      name: newFbName.trim() || `${newFbProvider.toUpperCase()} Gateway`,
+      provider: newFbProvider,
+      baseUrl: newFbBaseUrl.trim(),
+      apiKey: newFbApiKey.trim(),
+      model: newFbModel.trim() || 'default',
+      enabled: true,
+      priority: fallbackEndpoints.length + 1,
+      lastStatus: 'idle',
+    };
+
+    setFallbackEndpoints(prev => [...prev, newEndpoint]);
+    setNewFbName('');
+    setNewFbApiKey('');
+    setShowAddFbForm(false);
+
+    addNotification({
+      type: 'success',
+      title: 'Đã thêm cổng API dự phòng',
+      message: `Cổng ${newEndpoint.name} đã sẵn sàng trong danh sách failover.`,
+    });
+  };
+
+  const handleDeleteFallback = (id: string) => {
+    sounds.playClick();
+    setFallbackEndpoints(prev => prev.filter(ep => ep.id !== id));
+  };
+
+  const handleToggleFallback = (id: string, enabled: boolean) => {
+    sounds.playClick();
+    setFallbackEndpoints(prev =>
+      prev.map(ep => (ep.id === id ? { ...ep, enabled } : ep))
+    );
   };
 
   const handleSave = () => {
@@ -254,12 +352,15 @@ export function SettingsPanel() {
       contextWindow,
       inferenceSpeed,
       systemPrompt,
+      autoFallbackEnabled,
+      fallbackEndpoints,
+      webSearchEnabled,
     });
 
     addNotification({
       type: 'success',
       title: 'Cài đặt đã lưu',
-      message: 'Toàn bộ cấu hình hệ thống Thư Ký Kim đã được áp dụng.',
+      message: 'Toàn bộ cấu hình hệ thống Thư Ký Kim và API Fallback đã được áp dụng.',
     });
 
     setTimeout(() => setSaved(false), 2000);
@@ -279,13 +380,13 @@ export function SettingsPanel() {
             initial={{ scale: 0.94, y: 16 }}
             animate={{ scale: 1, y: 0 }}
             exit={{ scale: 0.94, y: 16 }}
-            transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
-            className="w-full max-w-4xl rounded-2xl overflow-hidden flex flex-col"
+            transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
+            className="w-full max-w-5xl rounded-2xl overflow-hidden flex flex-col"
             style={{
               maxHeight: '90vh',
               background: 'rgba(0, 10, 25, 0.96)',
               border: '1px solid rgba(0,245,255,0.25)',
-              boxShadow: '0 0 60px rgba(0,245,255,0.12), inset 0 0 30px rgba(0,0,0,0.5)',
+              boxShadow: '0 0 50px rgba(0,245,255,0.12), inset 0 0 30px rgba(0,0,0,0.5)',
             }}
           >
             {/* Header */}
@@ -298,7 +399,7 @@ export function SettingsPanel() {
                   CẤU HÌNH HỆ THỐNG THƯ KÝ KIM
                 </h2>
                 <p style={{ ...mono, color: 'rgba(0,245,255,0.5)', fontSize: '10px', marginTop: 4 }}>
-                  THƯ KÝ KIM NEURAL ASSISTANT v3.8 — OPENAI COMPLETIONS & MCP GATEWAY
+                  THƯ KÝ KIM NEURAL ASSISTANT v3.8 — OPENAI COMPLETIONS & MULTI-API FAILOVER
                 </p>
               </div>
               <motion.button
@@ -318,7 +419,7 @@ export function SettingsPanel() {
             <div className="flex flex-1 overflow-hidden" style={{ minHeight: 460 }}>
               {/* Sidebar */}
               <div
-                className="w-60 flex flex-col gap-1 p-4 flex-shrink-0"
+                className="w-64 flex flex-col gap-1 p-4 flex-shrink-0"
                 style={{ borderRight: '1px solid rgba(0,245,255,0.1)' }}
               >
                 {SECTIONS.map(s => (
@@ -349,7 +450,7 @@ export function SettingsPanel() {
                   {/* USER PROFILE SECTION */}
                   {section === 'user' && (
                     <motion.div key="user" initial={{ opacity: 0, x: 10 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -10 }} className="flex flex-col gap-4">
-                      <h3 style={{ ...orb, color: '#00f5ff', fontSize: '13px' }}>THÔNG TIN NGƯỜI DÙNG QUẢN TRỊ</h3>
+                      <h3 style={{ ...orb, color: '#00f5ff', fontSize: '13px' }}>THÔNG TIN NGƯỜI DÙNG QUẢN TRỊ (ANH VINH)</h3>
                       <Field label="FULL NAME (HỌ VÀ TÊN)" value={localFullName} onChange={setLocalFullName} placeholder="Vinh" />
                       <Field label="USERNAME (TÊN ĐĂNG NHẬP)" value={localUserName} onChange={setLocalUserName} placeholder="Vinh_Admin" />
                       <Field label="TÊN TRỢ LÝ AI" value={assistantName} onChange={setAssistantName} placeholder="Thư Ký Kim" />
@@ -360,33 +461,31 @@ export function SettingsPanel() {
                   {section === 'ai' && (
                     <motion.div key="ai" initial={{ opacity: 0, x: 10 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -10 }} className="flex flex-col gap-5">
                       <div className="flex items-center justify-between">
-                        <h3 style={{ ...orb, color: '#a855f7', fontSize: '13px' }}>CHUẨN KẾT NỐI OPENAI COMPLETIONS</h3>
-                        <span style={{ ...mono, color: '#22c55e', fontSize: '10px' }}>TƯƠNG THÍCH ĐA NỀN TẢNG</span>
+                        <h3 style={{ ...orb, color: '#a855f7', fontSize: '13px' }}>CỔNG KẾT NỐI CHÍNH (PRIMARY GATEWAY)</h3>
+                        <span style={{ ...mono, color: '#22c55e', fontSize: '10px' }}>TƯƠNG THÍCH OPENAI COMPLETIONS</span>
                       </div>
 
-                      {/* Provider selector grid */}
-                      <div className="flex flex-col gap-1.5">
-                        <label style={{ ...mono, color: 'rgba(0,245,255,0.7)', fontSize: '10px' }}>NHÀ CUNG CẤP API (PROVIDER):</label>
+                      {/* Provider Select Grid */}
+                      <div className="flex flex-col gap-2">
+                        <label style={{ ...mono, color: 'rgba(168,85,247,0.8)', fontSize: '10px' }}>CHỌN NỀN TẢNG CUNG CẤP (AI PROVIDER)</label>
                         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                          {(Object.keys(PROVIDER_PRESETS) as AIProvider[]).map(pKey => {
-                            const preset = PROVIDER_PRESETS[pKey];
-                            const isSelected = provider === pKey;
-
+                          {(Object.keys(PROVIDER_PRESETS) as AIProvider[]).map(p => {
+                            const isSelected = provider === p;
                             return (
                               <button
-                                key={pKey}
-                                onClick={() => handleProviderChange(pKey)}
-                                className="p-2.5 rounded-xl flex flex-col items-start gap-1 text-left cursor-pointer transition-all"
+                                key={p}
+                                onClick={() => handleProviderChange(p)}
+                                className="p-3 rounded-xl flex flex-col items-start gap-1 cursor-pointer transition-all text-left"
                                 style={{
                                   background: isSelected ? 'rgba(168,85,247,0.2)' : 'rgba(255,255,255,0.03)',
                                   border: `1px solid ${isSelected ? '#a855f7' : 'rgba(255,255,255,0.08)'}`,
                                 }}
                               >
-                                <span style={{ ...mono, color: isSelected ? '#a855f7' : '#fff', fontSize: '11px', fontWeight: 600 }}>
-                                  {preset.name}
+                                <span style={{ ...orb, color: isSelected ? '#a855f7' : 'rgba(255,255,255,0.8)', fontSize: '11px' }}>
+                                  {PROVIDER_PRESETS[p].name}
                                 </span>
-                                <span style={{ ...aptos, color: 'rgba(255,255,255,0.4)', fontSize: '9px' }} className="line-clamp-1">
-                                  {preset.defaultModel}
+                                <span style={{ ...mono, color: 'rgba(255,255,255,0.4)', fontSize: '8px' }}>
+                                  {PROVIDER_PRESETS[p].defaultModel}
                                 </span>
                               </button>
                             );
@@ -394,162 +493,288 @@ export function SettingsPanel() {
                         </div>
                       </div>
 
-                      {/* Base URL & API Key */}
                       <Field
-                        label="BASE URL (ĐỊA CHỈ GATEWAY)"
+                        label="BASE URL (ĐỊA CHỈ API GATEWAY)"
                         value={baseUrl}
                         onChange={setBaseUrl}
                         placeholder="https://api.xkiro.com/v1"
-                        description="Hỗ trợ https://api.xkiro.com/v1 hoặc bất kỳ endpoint OpenAI nào"
+                        description="Ví dụ: https://api.xkiro.com/v1 hoặc https://api.openai.com/v1"
                       />
 
                       <Field
-                        label="API KEY"
+                        label="API KEY (KHÓA XÁC THỰC)"
                         value={apiKey}
                         onChange={setApiKey}
                         type="password"
-                        placeholder="sk-... hoặc API Key từ nhà cung cấp"
+                        placeholder="Nhập khóa API Key bí mật..."
+                        description="API Key được lưu trữ cục bộ trên trình duyệt."
                       />
 
                       <Field
-                        label="MODEL NAME (TÊN MÔ HÌNH)"
+                        label="TÊN MÔ HÌNH (MODEL NAME)"
                         value={model}
                         onChange={setModel}
                         placeholder="Gwen 3.8 max"
-                        description="Gwen 3.8 max, qwen-3.8-max, gpt-4o, deepseek-chat..."
+                        description="Ví dụ: Gwen 3.8 max, deepseek-r1, gpt-4o, claude-3.5-sonnet"
                       />
 
-                      {/* Sliders: Context Window, Inference Speed, Temperature */}
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-4 rounded-xl" style={{ background: 'rgba(0,5,15,0.6)', border: '1px solid rgba(255,255,255,0.08)' }}>
-                        {/* Context Window */}
-                        <div className="flex flex-col gap-2">
-                          <div className="flex justify-between items-center">
-                            <span style={{ ...mono, color: 'rgba(0,245,255,0.8)', fontSize: '10px' }}>CONTEXT WINDOW / MAX TOKENS:</span>
-                            <span style={{ ...mono, color: '#00f5ff', fontSize: '11px' }}>{contextWindow.toLocaleString()} tokens</span>
-                          </div>
-                          <input
-                            type="range"
-                            min={512}
-                            max={65536}
-                            step={512}
-                            value={contextWindow}
-                            onChange={e => setContextWindow(parseInt(e.target.value, 10))}
-                            className="w-full"
-                          />
-                          <span style={{ ...aptos, color: 'rgba(255,255,255,0.35)', fontSize: '9px' }}>
-                            Tăng/giảm độ dài ngữ cảnh và câu trả lời tối đa
-                          </span>
-                        </div>
-
-                        {/* Inference Speed */}
-                        <div className="flex flex-col gap-2">
-                          <div className="flex justify-between items-center">
-                            <span style={{ ...mono, color: 'rgba(168,85,247,0.8)', fontSize: '10px' }}>TỐC ĐỘ SUY LUẬN (INFERENCE SPEED):</span>
-                            <span style={{ ...mono, color: '#a855f7', fontSize: '11px' }}>{inferenceSpeed.toFixed(1)}x</span>
-                          </div>
-                          <input
-                            type="range"
-                            min={0.5}
-                            max={3.0}
-                            step={0.1}
-                            value={inferenceSpeed}
-                            onChange={e => setInferenceSpeed(parseFloat(e.target.value))}
-                            className="w-full"
-                          />
-                          <span style={{ ...aptos, color: 'rgba(255,255,255,0.35)', fontSize: '9px' }}>
-                            Điều chỉnh tốc độ truyền và nhịp phát trực tiếp
-                          </span>
-                        </div>
-
-                        {/* Temperature */}
-                        <div className="flex flex-col gap-2">
-                          <div className="flex justify-between items-center">
-                            <span style={{ ...mono, color: 'rgba(255,255,255,0.6)', fontSize: '10px' }}>ĐỘ SÁNG TẠO (TEMPERATURE):</span>
-                            <span style={{ ...mono, color: '#fff', fontSize: '11px' }}>{temperature.toFixed(2)}</span>
-                          </div>
-                          <input
-                            type="range"
-                            min={0.0}
-                            max={2.0}
-                            step={0.05}
-                            value={temperature}
-                            onChange={e => setTemperature(parseFloat(e.target.value))}
-                            className="w-full"
-                          />
-                        </div>
-
-                        {/* Top P */}
-                        <div className="flex flex-col gap-2">
-                          <div className="flex justify-between items-center">
-                            <span style={{ ...mono, color: 'rgba(255,255,255,0.6)', fontSize: '10px' }}>LỌC TẦN XUẤT (TOP P):</span>
-                            <span style={{ ...mono, color: '#fff', fontSize: '11px' }}>{topP.toFixed(2)}</span>
-                          </div>
-                          <input
-                            type="range"
-                            min={0.1}
-                            max={1.0}
-                            step={0.05}
-                            value={topP}
-                            onChange={e => setTopP(parseFloat(e.target.value))}
-                            className="w-full"
-                          />
-                        </div>
-                      </div>
-
-                      {/* Test Connection Button */}
-                      <div className="flex items-center gap-3">
+                      {/* Connection Test Button */}
+                      <div className="flex items-center gap-4 p-4 rounded-xl" style={{ background: 'rgba(0,245,255,0.05)', border: '1px solid rgba(0,245,255,0.15)' }}>
                         <motion.button
-                          whileHover={{ scale: 1.03 }}
-                          whileTap={{ scale: 0.97 }}
-                          disabled={testingConnection}
+                          whileHover={{ scale: 1.02 }}
+                          whileTap={{ scale: 0.98 }}
                           onClick={handleTestConnection}
-                          className="flex items-center gap-2 px-4 py-2 rounded-xl cursor-pointer"
-                          style={{
-                            background: 'rgba(34,197,94,0.15)',
-                            border: '1px solid rgba(34,197,94,0.4)',
-                          }}
+                          disabled={testingConnection}
+                          className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-cyan-500/20 border border-cyan-500/40 text-cyan-300 text-xs font-mono cursor-pointer disabled:opacity-50"
                         >
-                          {testingConnection ? (
-                            <RefreshCw className="w-3.5 h-3.5 animate-spin text-green-400" />
-                          ) : (
-                            <Play className="w-3.5 h-3.5 text-green-400" />
-                          )}
-                          <span style={{ ...mono, color: '#22c55e', fontSize: '10px' }}>
-                            {testingConnection ? 'ĐANG KIỂM TRA...' : 'TEST CONNECTION (KIỂM TRA KẾT NỐI)'}
-                          </span>
+                          <RefreshCw className={`w-3.5 h-3.5 ${testingConnection ? 'animate-spin' : ''}`} />
+                          {testingConnection ? 'ĐANG KIỂM TRA...' : 'TEST KẾT NỐI API CHÍNH'}
                         </motion.button>
-
                         {testResult && (
-                          <div className="flex items-center gap-1.5 text-xs font-mono">
+                          <div className="flex items-center gap-2">
                             {testResult.success ? (
-                              <CheckCircle className="w-3.5 h-3.5 text-green-400" />
+                              <CheckCircle className="w-4 h-4 text-green-400 flex-shrink-0" />
                             ) : (
-                              <AlertCircle className="w-3.5 h-3.5 text-red-400" />
+                              <AlertCircle className="w-4 h-4 text-red-400 flex-shrink-0" />
                             )}
-                            <span style={{ color: testResult.success ? '#86efac' : '#fca5a5' }}>
+                            <span style={{ ...aptos, color: testResult.success ? '#4ade80' : '#f87171', fontSize: '12px' }}>
                               {testResult.message} ({testResult.latencyMs}ms)
                             </span>
                           </div>
                         )}
                       </div>
 
-                      {/* System Prompt */}
-                      <div className="flex flex-col gap-1.5">
-                        <label style={{ ...mono, color: 'rgba(0,245,255,0.7)', fontSize: '10px' }}>CÂU LỆNH HỆ THỐNG (SYSTEM PROMPT):</label>
-                        <textarea
-                          value={systemPrompt}
-                          onChange={e => setSystemPrompt(e.target.value)}
-                          rows={3}
-                          className="p-3 rounded-xl bg-black/60 border border-white/10 text-white text-xs outline-none focus:border-cyan-400"
-                          style={{ ...aptos }}
-                        />
+                      {/* Parameters Sliders */}
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div className="flex flex-col gap-1.5 p-3 rounded-lg bg-black/40 border border-white/10">
+                          <div className="flex justify-between items-center">
+                            <span style={{ ...mono, color: 'rgba(0,245,255,0.8)', fontSize: '10px' }}>CONTEXT WINDOW (MAX TOKENS):</span>
+                            <span style={{ ...mono, color: '#00f5ff', fontSize: '11px' }}>{contextWindow} tokens</span>
+                          </div>
+                          <input type="range" min={512} max={32768} step={512} value={contextWindow} onChange={e => setContextWindow(parseInt(e.target.value, 10))} className="w-full" />
+                        </div>
+                        <div className="flex flex-col gap-1.5 p-3 rounded-lg bg-black/40 border border-white/10">
+                          <div className="flex justify-between items-center">
+                            <span style={{ ...mono, color: 'rgba(0,245,255,0.8)', fontSize: '10px' }}>NHIỆT ĐỘ SÁNG TẠO (TEMPERATURE):</span>
+                            <span style={{ ...mono, color: '#00f5ff', fontSize: '11px' }}>{temperature.toFixed(2)}</span>
+                          </div>
+                          <input type="range" min={0.1} max={1.5} step={0.05} value={temperature} onChange={e => setTemperature(parseFloat(e.target.value))} className="w-full" />
+                        </div>
+                      </div>
+                    </motion.div>
+                  )}
+
+                  {/* MULTI-API FALLBACK POOL SECTION */}
+                  {section === 'fallback' && (
+                    <motion.div key="fallback" initial={{ opacity: 0, x: 10 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -10 }} className="flex flex-col gap-5">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <Zap className="w-4 h-4 text-amber-400" />
+                          <h3 style={{ ...orb, color: '#f59e0b', fontSize: '13px', margin: 0 }}>
+                            HỆ THỐNG CỔNG API DỰ PHÒNG (MULTI-API FAILOVER POOL)
+                          </h3>
+                        </div>
+                        <span style={{ ...mono, color: '#22c55e', fontSize: '10px' }}>
+                          {fallbackEndpoints.filter(f => f.enabled).length}/{fallbackEndpoints.length} CỔNG ĐANG BẬT
+                        </span>
+                      </div>
+
+                      <p style={{ ...aptos, color: 'rgba(255,255,255,0.75)', fontSize: '13px' }}>
+                        Khi cổng API chính gặp sự cố (hết quota, rate limit 429, nghẽn mạng 502/503), Thư Ký Kim sẽ <strong>tự động chuyển tiếp tức thì</strong> sang các cổng dự phòng theo thứ tự ưu tiên bên dưới mà không làm gián đoạn cuộc trò chuyện của anh.
+                      </p>
+
+                      <Toggle
+                        label="Bật chế độ tự động chuyển sang API dự phòng khi API chính lỗi (Auto-Failover)"
+                        value={autoFallbackEnabled}
+                        onChange={setAutoFallbackEnabled}
+                        color="#f59e0b"
+                      />
+
+                      {/* Fallback Endpoints List */}
+                      <div className="flex flex-col gap-3">
+                        {fallbackEndpoints.map((ep, index) => (
+                          <div
+                            key={ep.id}
+                            className="p-4 rounded-xl flex flex-col gap-3"
+                            style={{
+                              background: ep.enabled ? 'rgba(245,158,11,0.06)' : 'rgba(255,255,255,0.02)',
+                              border: `1px solid ${ep.enabled ? 'rgba(245,158,11,0.3)' : 'rgba(255,255,255,0.08)'}`,
+                            }}
+                          >
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-2.5">
+                                <span className="px-2 py-0.5 rounded text-[10px] font-mono bg-amber-500/20 text-amber-300 border border-amber-500/40">
+                                  Ưu tiên #{index + 1}
+                                </span>
+                                <h4 style={{ ...orb, color: ep.enabled ? '#f59e0b' : 'rgba(255,255,255,0.5)', fontSize: '12px', margin: 0 }}>
+                                  {ep.name}
+                                </h4>
+                              </div>
+
+                              <div className="flex items-center gap-2">
+                                <Toggle
+                                  label=""
+                                  value={ep.enabled}
+                                  onChange={v => handleToggleFallback(ep.id, v)}
+                                  color="#f59e0b"
+                                />
+                                <button
+                                  onClick={() => handleDeleteFallback(ep.id)}
+                                  className="p-1.5 rounded-lg text-red-400/60 hover:text-red-400 hover:bg-red-500/10 cursor-pointer"
+                                  title="Xóa cổng dự phòng này"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </button>
+                              </div>
+                            </div>
+
+                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs">
+                              <div className="p-2 rounded bg-black/40 border border-white/5 truncate">
+                                <span style={{ ...mono, color: 'rgba(255,255,255,0.4)', fontSize: '9px' }}>BASE URL: </span>
+                                <span style={{ ...aptos, color: 'rgba(255,255,255,0.85)' }}>{ep.baseUrl}</span>
+                              </div>
+                              <div className="p-2 rounded bg-black/40 border border-white/5 truncate">
+                                <span style={{ ...mono, color: 'rgba(255,255,255,0.4)', fontSize: '9px' }}>MODEL: </span>
+                                <span style={{ ...mono, color: '#00f5ff' }}>{ep.model}</span>
+                              </div>
+                              <div className="p-2 rounded bg-black/40 border border-white/5 flex items-center justify-between">
+                                <div className="truncate">
+                                  <span style={{ ...mono, color: 'rgba(255,255,255,0.4)', fontSize: '9px' }}>API KEY: </span>
+                                  <span style={{ ...mono, color: ep.apiKey ? '#4ade80' : '#f87171' }}>
+                                    {ep.apiKey ? '••••••••' + ep.apiKey.slice(-4) : 'Chưa nhập key'}
+                                  </span>
+                                </div>
+                              </div>
+                            </div>
+
+                            <div className="flex items-center justify-between pt-1">
+                              <input
+                                type="password"
+                                placeholder={`Nhập API Key cho ${ep.name}...`}
+                                value={ep.apiKey}
+                                onChange={e => {
+                                  const val = e.target.value;
+                                  setFallbackEndpoints(prev =>
+                                    prev.map(item => (item.id === ep.id ? { ...item, apiKey: val } : item))
+                                  );
+                                }}
+                                className="px-3 py-1.5 rounded-lg bg-black/50 border border-white/10 text-xs text-white outline-none flex-1 max-w-sm"
+                              />
+
+                              <motion.button
+                                whileHover={{ scale: 1.03 }}
+                                whileTap={{ scale: 0.97 }}
+                                onClick={() => handleTestFallbackEndpoint(ep)}
+                                disabled={testingFallbackId === ep.id}
+                                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-500/20 border border-amber-500/40 text-amber-300 text-xs font-mono cursor-pointer disabled:opacity-50"
+                              >
+                                <RefreshCw className={`w-3 h-3 ${testingFallbackId === ep.id ? 'animate-spin' : ''}`} />
+                                {testingFallbackId === ep.id ? 'Đang test...' : 'Test Cổng'}
+                                {ep.lastLatencyMs !== undefined && ` (${ep.lastLatencyMs}ms)`}
+                              </motion.button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+
+                      {/* Add New Fallback Button / Form */}
+                      {!showAddFbForm ? (
+                        <motion.button
+                          whileHover={{ scale: 1.02 }}
+                          whileTap={{ scale: 0.98 }}
+                          onClick={() => {
+                            sounds.playClick();
+                            setShowAddFbForm(true);
+                          }}
+                          className="flex items-center justify-center gap-2 p-3 rounded-xl border border-dashed border-amber-500/40 text-amber-300 font-mono text-xs cursor-pointer hover:bg-amber-500/10"
+                        >
+                          <Plus className="w-4 h-4" />
+                          THÊM CỔNG API DỰ PHÒNG MỚI (CUSTOM FALLBACK GATEWAY)
+                        </motion.button>
+                      ) : (
+                        <div className="p-4 rounded-xl bg-black/60 border border-amber-500/40 flex flex-col gap-3">
+                          <h4 style={{ ...orb, color: '#f59e0b', fontSize: '12px' }}>THÊM CỔNG API DỰ PHÒNG MỚI</h4>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <Field label="TÊN GỢI NHỚ" value={newFbName} onChange={setNewFbName} placeholder="Ví dụ: Groq Mixtral Backup" />
+                            <Field label="BASE URL" value={newFbBaseUrl} onChange={setNewFbBaseUrl} placeholder="https://api.groq.com/openai/v1" />
+                            <Field label="API KEY" value={newFbApiKey} onChange={setNewFbApiKey} type="password" placeholder="Nhập API Key..." />
+                            <Field label="MODEL NAME" value={newFbModel} onChange={setNewFbModel} placeholder="llama-3.3-70b-versatile" />
+                          </div>
+                          <div className="flex justify-end gap-2 mt-2">
+                            <button
+                              onClick={() => setShowAddFbForm(false)}
+                              className="px-3 py-1.5 rounded-lg border border-white/20 text-white/70 text-xs font-mono cursor-pointer"
+                            >
+                              HỦY
+                            </button>
+                            <button
+                              onClick={handleAddFallbackEndpoint}
+                              className="px-4 py-1.5 rounded-lg bg-amber-500 text-black font-semibold text-xs font-mono cursor-pointer"
+                            >
+                              LƯU VÀO DANH SÁCH DỰ PHÒNG
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </motion.div>
+                  )}
+
+                  {/* WEB BROWSING & LIVE RESEARCH SECTION */}
+                  {section === 'web' && (
+                    <motion.div key="web" initial={{ opacity: 0, x: 10 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -10 }} className="flex flex-col gap-5">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <Globe className="w-4 h-4 text-cyan-400" />
+                          <h3 style={{ ...orb, color: '#00f5ff', fontSize: '13px', margin: 0 }}>
+                            DUYỆT WEB & THAM KHẢO TÀI LIỆU TRỰC TUYẾN
+                          </h3>
+                        </div>
+                        <span style={{ ...mono, color: '#22c55e', fontSize: '10px' }}>LIVE WEB INTELLIGENCE</span>
+                      </div>
+
+                      <p style={{ ...aptos, color: 'rgba(255,255,255,0.75)', fontSize: '13px' }}>
+                        Cho phép Thư Ký Kim tự động tìm kiếm thông tin thời sự, tin tức mới nhất, tài liệu kỹ thuật, GitHub, Wikipedia và đọc trích xuất nội dung từ bất kỳ đường link URL nào anh cung cấp để phản hồi chính xác và đầy đủ nhất.
+                      </p>
+
+                      <Toggle
+                        label="Kích hoạt tự động tìm kiếm Web & Đọc link URL khi anh hỏi (Web Browsing MCP)"
+                        value={webSearchEnabled}
+                        onChange={setWebSearchEnabled}
+                        color="#00f5ff"
+                      />
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-2">
+                        <div className="p-3.5 rounded-xl bg-cyan-500/10 border border-cyan-500/30 flex flex-col gap-1.5">
+                          <span style={{ ...orb, color: '#00f5ff', fontSize: '11px' }}>🌐 kim_web_search</span>
+                          <span style={{ ...aptos, color: 'rgba(255,255,255,0.8)', fontSize: '12px' }}>
+                            Tìm kiếm trực tiếp trên DuckDuckGo & Google News & Wikipedia để thu thập dữ liệu thời gian thực.
+                          </span>
+                        </div>
+                        <div className="p-3.5 rounded-xl bg-cyan-500/10 border border-cyan-500/30 flex flex-col gap-1.5">
+                          <span style={{ ...orb, color: '#00f5ff', fontSize: '11px' }}>📄 kim_web_browse</span>
+                          <span style={{ ...aptos, color: 'rgba(255,255,255,0.8)', fontSize: '12px' }}>
+                            Trích xuất toàn bộ văn bản và cấu trúc bài báo, tài liệu học thuật từ đường dẫn URL.
+                          </span>
+                        </div>
+                        <div className="p-3.5 rounded-xl bg-cyan-500/10 border border-cyan-500/30 flex flex-col gap-1.5">
+                          <span style={{ ...orb, color: '#00f5ff', fontSize: '11px' }}>📚 kim_wikipedia_search</span>
+                          <span style={{ ...aptos, color: 'rgba(255,255,255,0.8)', fontSize: '12px' }}>
+                            Tra cứu bách khoa toàn thư Wikipedia Tiếng Việt và Quốc Tế.
+                          </span>
+                        </div>
+                        <div className="p-3.5 rounded-xl bg-cyan-500/10 border border-cyan-500/30 flex flex-col gap-1.5">
+                          <span style={{ ...orb, color: '#00f5ff', fontSize: '11px' }}>💻 kim_online_doc_reference</span>
+                          <span style={{ ...aptos, color: 'rgba(255,255,255,0.8)', fontSize: '12px' }}>
+                            Tra cứu đặc tả kỹ thuật framework, thư viện lập trình (React, Python, Node, v.v.).
+                          </span>
+                        </div>
                       </div>
                     </motion.div>
                   )}
 
                   {/* MCP PROTOCOL SECTION */}
                   {section === 'mcp' && (
-                    <motion.div key="mcp" initial={{ opacity: 0, x: 10 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -10 }} className="flex flex-col gap-4">
+                    <motion.div key="mcp" initial={{ opacity: 0, x: 10 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -10 }} className="flex flex-col gap-5">
                       <div className="flex items-center justify-between">
                         <h3 style={{ ...orb, color: '#22c55e', fontSize: '13px' }}>GIAO THỨC MODEL CONTEXT PROTOCOL (MCP)</h3>
                         <span style={{ ...mono, color: 'rgba(255,255,255,0.4)', fontSize: '10px' }}>
@@ -558,7 +783,7 @@ export function SettingsPanel() {
                       </div>
 
                       <p style={{ ...aptos, color: 'rgba(255,255,255,0.75)', fontSize: '13px' }}>
-                        Giao thức MCP cho phép Thư Ký Kim kết nối và thực thi các công cụ bên ngoài (máy tính toán học, trích xuất dữ liệu, quét hệ thống, máy chủ API nội bộ) tự động trong quá trình xử lý câu hỏi.
+                        Giao thức MCP cho phép Thư Ký Kim kết nối và thực thi các công cụ bên ngoài (duyệt web, máy tính toán học, trích xuất dữ liệu, quét hệ thống, máy chủ API nội bộ) tự động trong quá trình xử lý câu hỏi.
                       </p>
 
                       <div className="grid grid-cols-2 gap-3">
@@ -568,23 +793,18 @@ export function SettingsPanel() {
                             className="p-3 rounded-xl flex items-center justify-between"
                             style={{ background: 'rgba(34,197,94,0.06)', border: '1px solid rgba(34,197,94,0.2)' }}
                           >
-                            <div className="flex flex-col min-w-0 pr-2">
-                              <span style={{ ...mono, color: '#22c55e', fontSize: '11px' }} className="truncate">
-                                {t.name}
-                              </span>
-                              <span style={{ ...aptos, color: 'rgba(255,255,255,0.4)', fontSize: '10px' }} className="truncate">
-                                {t.description}
+                            <div className="flex flex-col">
+                              <span style={{ ...mono, color: '#22c55e', fontSize: '11px' }}>{t.name}</span>
+                              <span style={{ ...aptos, color: 'rgba(255,255,255,0.6)', fontSize: '11px', lineHeight: 1.3 }}>
+                                {t.description.slice(0, 55)}...
                               </span>
                             </div>
-                            <span
-                              className="px-2 py-0.5 rounded text-[8px] font-mono"
-                              style={{
-                                background: t.enabled ? 'rgba(34,197,94,0.2)' : 'rgba(255,255,255,0.05)',
-                                color: t.enabled ? '#22c55e' : 'rgba(255,255,255,0.3)',
-                              }}
-                            >
-                              {t.enabled ? 'BẬT' : 'TẮT'}
-                            </span>
+                            <Toggle
+                              label=""
+                              value={t.enabled}
+                              onChange={v => mcpService.toggleTool(t.name, v)}
+                              color="#22c55e"
+                            />
                           </div>
                         ))}
                       </div>
@@ -722,27 +942,6 @@ export function SettingsPanel() {
                             className="w-full"
                           />
                         </div>
-
-                        <div className="flex gap-2">
-                          <button
-                            onClick={() => sounds.playStartup()}
-                            className="px-3 py-1.5 rounded-xl bg-cyan-500/10 border border-cyan-500/30 text-cyan-300 text-xs font-mono cursor-pointer"
-                          >
-                            Âm Khởi động
-                          </button>
-                          <button
-                            onClick={() => sounds.playScan()}
-                            className="px-3 py-1.5 rounded-xl bg-purple-500/10 border border-purple-500/30 text-purple-300 text-xs font-mono cursor-pointer"
-                          >
-                            Âm Quét Nơ-ron
-                          </button>
-                          <button
-                            onClick={() => sounds.playSuccess()}
-                            className="px-3 py-1.5 rounded-xl bg-green-500/10 border border-green-500/30 text-green-300 text-xs font-mono cursor-pointer"
-                          >
-                            Âm Hoàn thành
-                          </button>
-                        </div>
                       </div>
                     </motion.div>
                   )}
@@ -751,54 +950,49 @@ export function SettingsPanel() {
                   {section === 'security' && (
                     <motion.div key="security" initial={{ opacity: 0, x: 10 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -10 }} className="flex flex-col gap-4">
                       <h3 style={{ ...orb, color: '#f59e0b', fontSize: '13px' }}>BẢO MẬT & MÃ HÓA HỆ THỐNG</h3>
-                      <Toggle label="Mã hóa đầu-cuối AES-256 + RSA-4096" value={encEnabled} onChange={setEncEnabled} color="#f59e0b" />
-                      <Toggle label="Xác thực sinh trắc học ảo" value={biometrics} onChange={setBiometrics} color="#f59e0b" />
-                      <Toggle label="Xác thực hai yếu tố (2FA)" value={twoFactor} onChange={setTwoFactor} color="#f59e0b" />
-                      <Toggle label="Ghi nhật ký kiểm toán (Audit Logging)" value={auditLog} onChange={setAuditLog} color="#f59e0b" />
+                      <Toggle label="Mã hóa bộ nhớ đệm chuẩn AES-256" value={encEnabled} onChange={setEncEnabled} color="#f59e0b" />
+                      <Toggle label="Xác thực sinh trắc học / Giọng nói" value={biometrics} onChange={setBiometrics} color="#f59e0b" />
+                      <Toggle label="Xác thực hai lớp (2FA)" value={twoFactor} onChange={setTwoFactor} color="#f59e0b" />
+                      <Toggle label="Ghi nhật ký kiểm toán hệ thống (Audit Log)" value={auditLog} onChange={setAuditLog} color="#f59e0b" />
                     </motion.div>
                   )}
                 </AnimatePresence>
               </div>
             </div>
 
-            {/* Footer */}
+            {/* Footer Buttons */}
             <div
-              className="flex items-center justify-end gap-3 px-8 py-4 flex-shrink-0"
-              style={{ borderTop: '1px solid rgba(0,245,255,0.1)' }}
+              className="flex items-center justify-between px-8 py-4 flex-shrink-0"
+              style={{ borderTop: '1px solid rgba(0,245,255,0.15)', background: 'rgba(0,5,15,0.8)' }}
             >
-              <motion.button
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-                onClick={() => {
-                  sounds.playClick();
-                  setSettingsOpen(false);
-                }}
-                className="flex items-center gap-2 px-4 py-2 rounded-xl cursor-pointer"
-                style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)' }}
-              >
-                <RotateCcw className="w-3.5 h-3.5 text-gray-400" />
-                <span style={{ ...mono, color: 'rgba(255,255,255,0.5)', fontSize: '10px' }}>HỦY BỎ</span>
-              </motion.button>
-              <motion.button
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-                onClick={handleSave}
-                className="flex items-center gap-2 px-5 py-2 rounded-xl cursor-pointer"
-                style={{
-                  background: saved ? 'rgba(34,197,94,0.2)' : 'rgba(0,245,255,0.15)',
-                  border: `1px solid ${saved ? '#22c55e' : 'rgba(0,245,255,0.4)'}`,
-                  boxShadow: saved ? '0 0 15px rgba(34,197,94,0.3)' : '0 0 15px rgba(0,245,255,0.15)',
-                }}
-              >
-                {saved ? (
-                  <CheckCircle className="w-3.5 h-3.5 text-green-400" />
-                ) : (
-                  <Save className="w-3.5 h-3.5 text-cyan-400" />
-                )}
-                <span style={{ ...mono, color: saved ? '#22c55e' : '#00f5ff', fontSize: '10px' }}>
-                  {saved ? 'ĐÃ LƯU THÀNH CÔNG' : 'LƯU CẤU HÌNH'}
-                </span>
-              </motion.button>
+              <span style={{ ...mono, color: 'rgba(255,255,255,0.4)', fontSize: '10px' }}>
+                HỆ ĐIỀU HÀNH THƯ KÝ KIM v3.8
+              </span>
+              <div className="flex items-center gap-3">
+                <motion.button
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={() => setSettingsOpen(false)}
+                  className="px-4 py-2 rounded-xl text-xs font-mono cursor-pointer"
+                  style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.15)', color: 'rgba(255,255,255,0.7)' }}
+                >
+                  ĐÓNG
+                </motion.button>
+                <motion.button
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={handleSave}
+                  className="flex items-center gap-2 px-5 py-2 rounded-xl text-xs font-mono cursor-pointer"
+                  style={{
+                    background: saved ? 'rgba(34,197,94,0.3)' : 'rgba(0,245,255,0.2)',
+                    border: `1px solid ${saved ? '#22c55e' : '#00f5ff'}`,
+                    color: saved ? '#4ade80' : '#00f5ff',
+                  }}
+                >
+                  <Save className="w-3.5 h-3.5" />
+                  {saved ? 'ĐÃ LƯU THÀNH CÔNG!' : 'LƯU TẤT CẢ CẤU HÌNH'}
+                </motion.button>
+              </div>
             </div>
           </motion.div>
         </motion.div>

@@ -46,20 +46,25 @@ export function MCPPanel() {
     sounds.playClick();
     setIsAdding(true);
 
-    const res = await mcpService.addServer(serverName, serverUrl, serverAuth);
-    setIsAdding(false);
-
-    if (res.success) {
+    try {
+      mcpService.addServer({
+        id: 'srv_' + Date.now(),
+        name: serverName.trim(),
+        url: serverUrl.trim(),
+        type: 'http',
+      });
       sounds.playSuccess();
-      addNotification({ type: 'success', title: 'Máy chủ MCP kết nối', message: res.message });
+      addNotification({ type: 'success', title: 'Máy chủ MCP kết nối', message: `Đã kết nối máy chủ ${serverName}` });
       setShowAddServer(false);
       setServerName('');
       setServerUrl('');
       setServerAuth('');
       refreshData();
-    } else {
+    } catch (e: any) {
       sounds.playError();
-      addNotification({ type: 'error', title: 'Lỗi MCP Server', message: res.message });
+      addNotification({ type: 'error', title: 'Lỗi MCP Server', message: e.message });
+    } finally {
+      setIsAdding(false);
     }
   };
 
@@ -86,7 +91,7 @@ export function MCPPanel() {
       return;
     }
 
-    const res = await mcpService.callTool(selectedTool.name, parsedArgs);
+    const res = await mcpService.executeTool(selectedTool.name, parsedArgs);
     setExecuting(false);
     setTestResult(res);
 

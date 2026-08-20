@@ -1,5 +1,6 @@
 // Standard OpenAI Chat Completions Client for Thư Ký Kim
 // Compatible with Xkiro AI (https://api.xkiro.com/v1), OpenAI, OpenRouter, DeepSeek, Groq, Ollama & Custom Providers
+// Includes Multi-API Fallback Pool & Automatic Failover Engine
 
 export type AIProvider = 'xkiro' | 'openai' | 'openrouter' | 'deepseek' | 'groq' | 'ollama' | 'custom';
 
@@ -79,6 +80,20 @@ export const PROVIDER_PRESETS: Record<AIProvider, ProviderPreset> = {
   },
 };
 
+export interface FallbackEndpoint {
+  id: string;
+  name: string;
+  provider: AIProvider;
+  baseUrl: string;
+  apiKey: string;
+  model: string;
+  enabled: boolean;
+  priority: number;
+  lastLatencyMs?: number;
+  lastTestedAt?: string;
+  lastStatus?: 'connected' | 'error' | 'idle';
+}
+
 export interface AISettings {
   provider: AIProvider;
   baseUrl: string;
@@ -90,7 +105,68 @@ export interface AISettings {
   inferenceSpeed: number; // 0.5x to 3.0x simulated stream speed
   streaming: boolean;
   systemPrompt: string;
+  autoFallbackEnabled: boolean;
+  fallbackEndpoints: FallbackEndpoint[];
+  webSearchEnabled: boolean;
 }
+
+export const DEFAULT_FALLBACK_ENDPOINTS: FallbackEndpoint[] = [
+  {
+    id: 'fallback_openrouter',
+    name: 'OpenRouter Gateway (Dự phòng 1)',
+    provider: 'openrouter',
+    baseUrl: 'https://openrouter.ai/api/v1',
+    apiKey: '',
+    model: 'deepseek/deepseek-r1',
+    enabled: true,
+    priority: 1,
+    lastStatus: 'idle',
+  },
+  {
+    id: 'fallback_deepseek',
+    name: 'DeepSeek Official API (Dự phòng 2)',
+    provider: 'deepseek',
+    baseUrl: 'https://api.deepseek.com/v1',
+    apiKey: '',
+    model: 'deepseek-chat',
+    enabled: true,
+    priority: 2,
+    lastStatus: 'idle',
+  },
+  {
+    id: 'fallback_groq',
+    name: 'Groq LPU Fast Inference (Dự phòng 3)',
+    provider: 'groq',
+    baseUrl: 'https://api.groq.com/openai/v1',
+    apiKey: '',
+    model: 'llama-3.3-70b-versatile',
+    enabled: true,
+    priority: 3,
+    lastStatus: 'idle',
+  },
+  {
+    id: 'fallback_openai',
+    name: 'OpenAI Direct Gateway (Dự phòng 4)',
+    provider: 'openai',
+    baseUrl: 'https://api.openai.com/v1',
+    apiKey: '',
+    model: 'gpt-4o-mini',
+    enabled: true,
+    priority: 4,
+    lastStatus: 'idle',
+  },
+  {
+    id: 'fallback_ollama',
+    name: 'Ollama Local Offline (Dự phòng 5)',
+    provider: 'ollama',
+    baseUrl: 'http://localhost:11434/v1',
+    apiKey: '',
+    model: 'llama3.2',
+    enabled: false,
+    priority: 5,
+    lastStatus: 'idle',
+  },
+];
 
 export const DEFAULT_AI_SETTINGS: AISettings = {
   provider: (import.meta.env.VITE_AI_PROVIDER as AIProvider) || 'xkiro',
@@ -102,6 +178,9 @@ export const DEFAULT_AI_SETTINGS: AISettings = {
   contextWindow: parseInt(import.meta.env.VITE_CONTEXT_WINDOW || '8192', 10),
   inferenceSpeed: parseFloat(import.meta.env.VITE_INFERENCE_SPEED || '1.0'),
   streaming: true,
+  autoFallbackEnabled: true,
+  webSearchEnabled: true,
+  fallbackEndpoints: DEFAULT_FALLBACK_ENDPOINTS,
   systemPrompt: `Bạn là Thư Ký Kim — Trợ lý ảo AI nữ thông minh, tận tụy, nhanh nhẹn và ngọt ngào (Holographic AI Assistant).
 Người đang nói chuyện và chỉ đạo bạn là: Anh Vinh (Username: Vinh_Admin).
 
@@ -111,12 +190,16 @@ QUY TẮC XƯNG HÔ BẮT BUỘC (QUAN TRỌNG NHẤT):
 3. Giữ phong thái lễ phép, ngọt ngào, dễ thương, nhanh nhẹn, chu đáo và sắc sảo.
 
 NHIỆM VỤ CỦA THƯ KÝ KIM:
-- Hỗ trợ anh Vinh phân tích, hệ thống hóa tài liệu, viết mã lập trình, giải quyết bài toán phức tạp, quản lý công việc và điều phối các công cụ MCP.
-- Luôn phản hồi bằng tiếng Việt tự nhiên, định dạng Markdown trực quan, khoa học, rõ ràng và thẩm mỹ cao.`,
+- Hỗ trợ anh Vinh duyệt web, tra cứu tài liệu trên mạng, phân tích, hệ thống hóa tài liệu, viết mã lập trình, giải quyết bài toán phức tạp và điều phối các công cụ MCP.
+- Luôn phản hồi bằng tiếng Việt tự nhiên, có định dạng Markdown trực quan, khoa học, đầy đủ dẫn chứng và thẩm mỹ cao.`,
 };
 
 export class OpenAIService {
   private settings: AISettings;
+  private lastUsedEndpointInfo: { name: string; isFallback: boolean } = {
+    name: 'Xkiro AI Gateway (Primary)',
+    isFallback: false,
+  };
 
   constructor() {
     this.settings = this.loadSettings();
@@ -124,9 +207,14 @@ export class OpenAIService {
 
   public loadSettings(): AISettings {
     try {
-      const saved = localStorage.getItem('cat_ai_settings');
+      const saved = localStorage.getItem('kim_ai_settings') || localStorage.getItem('cat_ai_settings');
       if (saved) {
-        return { ...DEFAULT_AI_SETTINGS, ...JSON.parse(saved) };
+        const parsed = JSON.parse(saved);
+        return {
+          ...DEFAULT_AI_SETTINGS,
+          ...parsed,
+          fallbackEndpoints: parsed.fallbackEndpoints || DEFAULT_FALLBACK_ENDPOINTS,
+        };
       }
     } catch {
       // Fallback
@@ -137,7 +225,7 @@ export class OpenAIService {
   public saveSettings(newSettings: Partial<AISettings>) {
     this.settings = { ...this.settings, ...newSettings };
     try {
-      localStorage.setItem('cat_ai_settings', JSON.stringify(this.settings));
+      localStorage.setItem('kim_ai_settings', JSON.stringify(this.settings));
     } catch {
       // Ignore
     }
@@ -147,39 +235,52 @@ export class OpenAIService {
     return { ...this.settings };
   }
 
-  /**
-   * Helper to normalize base URL (strip trailing slashes)
-   */
+  public getLastUsedEndpointInfo() {
+    return this.lastUsedEndpointInfo;
+  }
+
   private normalizeUrl(url: string): string {
     return url.replace(/\/+$/, '');
   }
 
   /**
-   * Execute chat completion via OpenAI standard POST /chat/completions
+   * Internal worker to execute a completion request on a single endpoint
    */
-  public async chatCompletion({
+  private async executeSingleEndpoint({
+    endpointUrl,
+    apiKey,
+    model,
+    systemPrompt,
     messages,
+    temperature,
+    topP,
+    contextWindow,
+    streaming,
+    tools,
+    signal,
     onChunk,
     onDone,
-    onError,
-    signal,
-    tools,
   }: {
+    endpointUrl: string;
+    apiKey: string;
+    model: string;
+    systemPrompt: string;
     messages: { role: 'system' | 'user' | 'assistant'; content: string }[];
+    temperature: number;
+    topP: number;
+    contextWindow: number;
+    streaming: boolean;
+    tools?: any[];
+    signal?: AbortSignal;
     onChunk?: (token: string, fullText: string) => void;
     onDone?: (fullText: string) => void;
-    onError?: (error: Error) => void;
-    signal?: AbortSignal;
-    tools?: any[];
   }): Promise<string> {
-    const { baseUrl, apiKey, model, temperature, topP, contextWindow, streaming, systemPrompt } = this.settings;
-
     const formattedMessages = [
       { role: 'system', content: systemPrompt },
       ...messages,
     ];
 
-    const cleanBaseUrl = this.normalizeUrl(baseUrl || 'https://api.xkiro.com/v1');
+    const cleanBaseUrl = this.normalizeUrl(endpointUrl || 'https://api.xkiro.com/v1');
     const endpoint = `${cleanBaseUrl}/chat/completions`;
 
     const requestPayload: any = {
@@ -204,18 +305,15 @@ export class OpenAIService {
       headers['x-api-key'] = apiKey.trim();
     }
 
-    // Try direct fetch first; if CORS error occurs, fallback to proxy
     const tryFetch = async (targetEndpoint: string, useProxy: boolean = false): Promise<Response> => {
       let finalUrl = targetEndpoint;
-      let finalHeaders = { ...headers };
-
       if (useProxy) {
         finalUrl = `/api/proxy?target=${encodeURIComponent(targetEndpoint)}`;
       }
 
       return fetch(finalUrl, {
         method: 'POST',
-        headers: finalHeaders,
+        headers,
         body: JSON.stringify(requestPayload),
         signal,
       });
@@ -225,14 +323,10 @@ export class OpenAIService {
     try {
       response = await tryFetch(endpoint, false);
     } catch (err: any) {
-      // If direct request failed (e.g. CORS or network error), attempt via Edge proxy
-      console.warn('Direct fetch failed, trying Edge Proxy fallback...', err);
       try {
         response = await tryFetch(endpoint, true);
       } catch (proxyErr: any) {
-        const finalErr = new Error(`Không thể kết nối đến API Gateway (${endpoint}). Chi tiết: ${err?.message || proxyErr?.message}`);
-        onError?.(finalErr);
-        throw finalErr;
+        throw new Error(`Không thể kết nối đến máy chủ (${endpoint}). Lỗi: ${err?.message || proxyErr?.message}`);
       }
     }
 
@@ -244,9 +338,7 @@ export class OpenAIService {
       } catch {
         errorDetail = await response.text();
       }
-      const error = new Error(`Lỗi từ API (${response.status} ${response.statusText}): ${errorDetail || 'Không có phản hồi chi tiết'}`);
-      onError?.(error);
-      throw error;
+      throw new Error(`HTTP ${response.status} (${response.statusText}): ${errorDetail || 'Không có phản hồi chi tiết'}`);
     }
 
     // Handle Streaming response (SSE)
@@ -296,7 +388,6 @@ export class OpenAIService {
         if (streamErr.name === 'AbortError') {
           return fullContent;
         }
-        onError?.(streamErr);
         throw streamErr;
       }
     } else {
@@ -310,14 +401,147 @@ export class OpenAIService {
   }
 
   /**
-   * Quick connection test
+   * Chat completion with Multi-API Fallback Support
    */
-  public async testConnection(): Promise<{ success: boolean; message: string; latencyMs: number }> {
+  public async chatCompletion({
+    messages,
+    onChunk,
+    onDone,
+    onError,
+    signal,
+    tools,
+    onFallbackTriggered,
+  }: {
+    messages: { role: 'system' | 'user' | 'assistant'; content: string }[];
+    onChunk?: (token: string, fullText: string) => void;
+    onDone?: (fullText: string) => void;
+    onError?: (error: Error) => void;
+    signal?: AbortSignal;
+    tools?: any[];
+    onFallbackTriggered?: (fallbackName: string, originalError: string) => void;
+  }): Promise<string> {
+    const {
+      baseUrl,
+      apiKey,
+      model,
+      temperature,
+      topP,
+      contextWindow,
+      streaming,
+      systemPrompt,
+      autoFallbackEnabled,
+      fallbackEndpoints,
+    } = this.settings;
+
+    // Candidate list: Primary first, then enabled fallback endpoints in priority order
+    interface Candidate {
+      id: string;
+      name: string;
+      baseUrl: string;
+      apiKey: string;
+      model: string;
+      isPrimary: boolean;
+    }
+
+    const candidateList: Candidate[] = [
+      {
+        id: 'primary',
+        name: `Cổng chính (${this.settings.provider.toUpperCase()} - ${model})`,
+        baseUrl,
+        apiKey,
+        model,
+        isPrimary: true,
+      },
+    ];
+
+    if (autoFallbackEnabled && fallbackEndpoints && fallbackEndpoints.length > 0) {
+      const activeFallbacks = [...fallbackEndpoints]
+        .filter(f => f.enabled)
+        .sort((a, b) => (a.priority || 0) - (b.priority || 0))
+        .map(f => ({
+          id: f.id,
+          name: f.name,
+          baseUrl: f.baseUrl,
+          apiKey: f.apiKey,
+          model: f.model,
+          isPrimary: false,
+        }));
+
+      candidateList.push(...activeFallbacks);
+    }
+
+    const errors: Array<{ name: string; error: string }> = [];
+
+    // Iterate through candidates until one succeeds
+    for (let i = 0; i < candidateList.length; i++) {
+      const candidate = candidateList[i];
+
+      try {
+        if (!candidate.isPrimary) {
+          onFallbackTriggered?.(candidate.name, errors[errors.length - 1]?.error || 'Cổng trước gặp sự cố');
+        }
+
+        const result = await this.executeSingleEndpoint({
+          endpointUrl: candidate.baseUrl,
+          apiKey: candidate.apiKey,
+          model: candidate.model,
+          systemPrompt,
+          messages,
+          temperature,
+          topP,
+          contextWindow,
+          streaming,
+          tools,
+          signal,
+          onChunk,
+          onDone,
+        });
+
+        this.lastUsedEndpointInfo = {
+          name: candidate.name,
+          isFallback: !candidate.isPrimary,
+        };
+
+        return result;
+      } catch (err: any) {
+        console.warn(`[Thư Ký Kim Failover] Endpoint ${candidate.name} thất bại:`, err.message);
+        errors.push({ name: candidate.name, error: err.message });
+
+        // If this is the last candidate, re-throw comprehensive error
+        if (i === candidateList.length - 1) {
+          const summary = errors.map(e => `• ${e.name}: ${e.error}`).join('\n');
+          const finalError = new Error(`Tất cả các cổng API (${candidateList.length} cổng) đều không phản hồi:\n${summary}`);
+          onError?.(finalError);
+          throw finalError;
+        }
+      }
+    }
+
+    throw new Error('Không thể kết nối đến bất kỳ cổng API nào.');
+  }
+
+  /**
+   * Test a specific endpoint
+   */
+  public async testEndpoint(endpoint: { baseUrl: string; apiKey: string; model: string; name?: string }): Promise<{
+    success: boolean;
+    message: string;
+    latencyMs: number;
+  }> {
     const start = performance.now();
     try {
-      const res = await this.chatCompletion({
-        messages: [{ role: 'user', content: 'Ping! Trả lời duy nhất "PONG".' }],
+      const res = await this.executeSingleEndpoint({
+        endpointUrl: endpoint.baseUrl,
+        apiKey: endpoint.apiKey,
+        model: endpoint.model,
+        systemPrompt: 'Trả lời duy nhất 1 từ: "PONG".',
+        messages: [{ role: 'user', content: 'Ping!' }],
+        temperature: 0.1,
+        topP: 0.9,
+        contextWindow: 64,
+        streaming: false,
       });
+
       const latencyMs = Math.round(performance.now() - start);
       return {
         success: true,
@@ -332,6 +556,18 @@ export class OpenAIService {
         latencyMs,
       };
     }
+  }
+
+  /**
+   * Quick connection test for primary endpoint
+   */
+  public async testConnection(): Promise<{ success: boolean; message: string; latencyMs: number }> {
+    return this.testEndpoint({
+      baseUrl: this.settings.baseUrl,
+      apiKey: this.settings.apiKey,
+      model: this.settings.model,
+      name: 'Primary Gateway',
+    });
   }
 }
 
