@@ -81,7 +81,7 @@ function Ring({
 }
 
 export function AICore() {
-  const { aiState, setAiState, addNotification } = useApp();
+  const { aiState, setAiState, addNotification, isSpeaking } = useApp();
   const cfg = stateConfig[aiState];
   const [dataPoints, setDataPoints] = useState<{ x: number; y: number; val: string }[]>([]);
 
@@ -216,16 +216,16 @@ export function AICore() {
             <span
               style={{
                 ...orb,
-                color: cfg.color,
+                color: isSpeaking ? '#a855f7' : cfg.color,
                 fontSize: '16px',
                 letterSpacing: '0.25em',
-                textShadow: `0 0 15px ${cfg.glow}`,
+                textShadow: `0 0 15px ${isSpeaking ? 'rgba(168,85,247,0.7)' : cfg.glow}`,
               }}
             >
-              {cfg.label}
+              {isSpeaking ? 'GIỌNG NAM TRẦM' : cfg.label}
             </span>
             <span style={{ ...mono, color: 'rgba(255,255,255,0.45)', fontSize: '10px', letterSpacing: '0.12em' }}>
-              {cfg.subLabel}
+              {isSpeaking ? 'ĐANG TỰ ĐỘNG ĐỌC PHẢN HỒI...' : cfg.subLabel}
             </span>
           </motion.div>
         </AnimatePresence>

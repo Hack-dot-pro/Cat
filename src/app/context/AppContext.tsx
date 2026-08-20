@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
 import { sounds } from '../services/sound';
 import { openAIService, AISettings, DEFAULT_AI_SETTINGS } from '../services/openai';
+import { deepVoice } from '../services/deepVoice';
 import { UploadedDocument } from '../components/FilesPanel';
 
 export type AIState = 'idle' | 'listening' | 'processing' | 'responding';
@@ -67,6 +68,19 @@ interface AppContextType {
   setUserFullName: (name: string) => void;
   userName: string;
   setUserName: (name: string) => void;
+
+  // Deep Voice TTS States
+  isSpeaking: boolean;
+  voiceEnabled: boolean;
+  setVoiceEnabled: (v: boolean) => void;
+  voiceAutoSpeak: boolean;
+  setVoiceAutoSpeak: (v: boolean) => void;
+  voicePitch: number;
+  setVoicePitch: (p: number) => void;
+  voiceRate: number;
+  setVoiceRate: (r: number) => void;
+  speakText: (text: string) => void;
+  stopSpeaking: () => void;
 }
 
 const AppContext = createContext<AppContextType | null>(null);
@@ -75,7 +89,7 @@ const initialMessages: Message[] = [
   {
     id: '1',
     type: 'ai',
-    text: 'Hệ điều hành **CAT AI v3.8** đã khởi tạo thành công. Lõi nơ-ron đa tầng trực tuyến. Chào mừng **Vinh_Admin** (Vinh)! Chuẩn kết nối OpenAI Completions (Xkiro AI Gateway) và giao thức MCP đã sẵn sàng phục vụ.',
+    text: 'Hệ điều hành **CAT AI v3.8** đã khởi tạo thành công. Lõi nơ-ron đa tầng trực tuyến. Chào mừng **Vinh_Admin** (Vinh)! Giọng đọc nam trầm chậm rãi và chuẩn kết nối OpenAI Completions đã sẵn sàng phục vụ.',
     timestamp: new Date(Date.now() - 8000),
   },
   {
@@ -161,6 +175,48 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [soundEnabled, setSoundEnabledState] = useState<boolean>(() => sounds.isEnabled());
   const [soundVolume, setSoundVolumeState] = useState<number>(() => sounds.getVolume());
 
+  // Deep Voice TTS States
+  const [isSpeaking, setIsSpeaking] = useState<boolean>(false);
+  const [voiceEnabled, setVoiceEnabledState] = useState<boolean>(() => deepVoice.isEnabled());
+  const [voiceAutoSpeak, setVoiceAutoSpeakState] = useState<boolean>(() => deepVoice.isAutoSpeak());
+  const [voicePitch, setVoicePitchState] = useState<number>(() => deepVoice.getPitch());
+  const [voiceRate, setVoiceRateState] = useState<number>(() => deepVoice.getRate());
+
+  // Subscribe to voice speaking state
+  useEffect(() => {
+    return deepVoice.subscribe(speaking => {
+      setIsSpeaking(speaking);
+    });
+  }, []);
+
+  const setVoiceEnabled = useCallback((v: boolean) => {
+    deepVoice.setEnabled(v);
+    setVoiceEnabledState(v);
+  }, []);
+
+  const setVoiceAutoSpeak = useCallback((v: boolean) => {
+    deepVoice.setAutoSpeak(v);
+    setVoiceAutoSpeakState(v);
+  }, []);
+
+  const setVoicePitch = useCallback((p: number) => {
+    deepVoice.setPitch(p);
+    setVoicePitchState(p);
+  }, []);
+
+  const setVoiceRate = useCallback((r: number) => {
+    deepVoice.setRate(r);
+    setVoiceRateState(r);
+  }, []);
+
+  const speakText = useCallback((text: string) => {
+    deepVoice.speak(text);
+  }, []);
+
+  const stopSpeaking = useCallback(() => {
+    deepVoice.stop();
+  }, []);
+
   // Play startup sound on first load
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -183,9 +239,15 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const addMessage = useCallback((msg: Omit<Message, 'id' | 'timestamp'>) => {
     setMessages(prev => [...prev, { ...msg, id: Date.now().toString(), timestamp: new Date() }]);
     sounds.playMessage();
+
+    // Auto speak if it's an AI message and autoSpeak is active
+    if (msg.type === 'ai' && deepVoice.isEnabled() && deepVoice.isAutoSpeak()) {
+      deepVoice.speak(msg.text);
+    }
   }, []);
 
   const clearMessages = useCallback(() => {
+    deepVoice.stop();
     sounds.playClick();
     setMessages([]);
   }, []);
@@ -229,6 +291,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       aiSettings, updateAiSettings,
       userFullName, setUserFullName,
       userName, setUserName,
+      isSpeaking, voiceEnabled, setVoiceEnabled,
+      voiceAutoSpeak, setVoiceAutoSpeak,
+      voicePitch, setVoicePitch,
+      voiceRate, setVoiceRate,
+      speakText, stopSpeaking,
     }}>
       {children}
     </AppContext.Provider>

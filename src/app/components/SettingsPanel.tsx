@@ -3,10 +3,11 @@ import { motion, AnimatePresence } from 'motion/react';
 import {
   X, User, Brain, Key, Shield, Eye, EyeOff, ChevronDown,
   CheckCircle, AlertCircle, Save, RotateCcw, Lock, Volume2,
-  Cpu, Wrench, RefreshCw, Play, Globe, Zap
+  Cpu, Wrench, RefreshCw, Play, Globe, Zap, Bot, VolumeX
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { sounds } from '../services/sound';
+import { deepVoice } from '../services/deepVoice';
 import {
   openAIService,
   PROVIDER_PRESETS,
@@ -25,7 +26,7 @@ const SECTIONS: { id: Section; label: string; icon: React.ElementType; color: st
   { id: 'user', label: 'HỒ SƠ NGƯỜI DÙNG', icon: User, color: '#00f5ff' },
   { id: 'ai', label: 'CẤU HÌNH AI & GATEWAY', icon: Brain, color: '#a855f7' },
   { id: 'mcp', label: 'GIAO THỨC MCP', icon: Wrench, color: '#22c55e' },
-  { id: 'sound', label: 'ÂM THANH SCI-FI', icon: Volume2, color: '#0ea5e9' },
+  { id: 'sound', label: 'ÂM THANH & GIỌNG ĐỌC', icon: Volume2, color: '#0ea5e9' },
   { id: 'security', label: 'BẢO MẬT & MÃ HÓA', icon: Shield, color: '#f59e0b' },
 ];
 
@@ -147,6 +148,16 @@ export function SettingsPanel() {
     setUserFullName,
     userName,
     setUserName,
+    voiceEnabled,
+    setVoiceEnabled,
+    voiceAutoSpeak,
+    setVoiceAutoSpeak,
+    voicePitch,
+    setVoicePitch,
+    voiceRate,
+    setVoiceRate,
+    isSpeaking,
+    stopSpeaking,
   } = useApp();
 
   const [section, setSection] = useState<Section>('ai');
@@ -580,53 +591,158 @@ export function SettingsPanel() {
                     </motion.div>
                   )}
 
-                  {/* SOUND SETTINGS SECTION */}
+                  {/* SOUND & VOICE SETTINGS SECTION */}
                   {section === 'sound' && (
-                    <motion.div key="sound" initial={{ opacity: 0, x: 10 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -10 }} className="flex flex-col gap-4">
-                      <h3 style={{ ...orb, color: '#0ea5e9', fontSize: '13px' }}>HIỆU ỨNG ÂM THANH SCI-FI</h3>
-
-                      <Toggle
-                        label="Bật hiệu ứng âm thanh tổng hợp Web Audio"
-                        value={soundEnabled}
-                        onChange={setSoundEnabled}
-                        color="#0ea5e9"
-                      />
-
-                      <div className="flex flex-col gap-2 p-4 rounded-xl" style={{ background: 'rgba(0,5,15,0.6)', border: '1px solid rgba(255,255,255,0.08)' }}>
-                        <div className="flex justify-between items-center">
-                          <span style={{ ...mono, color: 'rgba(0,245,255,0.8)', fontSize: '10px' }}>ÂM LƯỢNG HỆ THỐNG:</span>
-                          <span style={{ ...mono, color: '#0ea5e9', fontSize: '11px' }}>{Math.round(soundVolume * 100)}%</span>
+                    <motion.div key="sound" initial={{ opacity: 0, x: 10 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -10 }} className="flex flex-col gap-5">
+                      {/* Deep Male Voice Engine Section */}
+                      <div className="flex flex-col gap-3 p-4 rounded-xl" style={{ background: 'rgba(168,85,247,0.08)', border: '1px solid rgba(168,85,247,0.25)' }}>
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <Bot className="w-4 h-4 text-purple-400" />
+                            <h3 style={{ ...orb, color: '#a855f7', fontSize: '13px', margin: 0 }}>
+                              GIỌNG ĐỌC NAM TRẦM CAT AI (DEEP VOICE ENGINE)
+                            </h3>
+                          </div>
+                          <span style={{ ...mono, color: '#22c55e', fontSize: '9px' }}>
+                            {deepVoice.getSelectedVoiceName()}
+                          </span>
                         </div>
-                        <input
-                          type="range"
-                          min={0}
-                          max={1}
-                          step={0.05}
-                          value={soundVolume}
-                          onChange={e => setSoundVolume(parseFloat(e.target.value))}
-                          className="w-full"
+
+                        <p style={{ ...aptos, color: 'rgba(255,255,255,0.7)', fontSize: '12px' }}>
+                          Động cơ tổng hợp giọng đọc Web Speech API với độ trễ 0ms, sử dụng tông nam trầm uy lực, phong thái điềm đạm, chậm rãi và tự động phát âm thanh khi có phản hồi mới từ AI.
+                        </p>
+
+                        <Toggle
+                          label="Kích hoạt động cơ Giọng đọc Nam Trầm"
+                          value={voiceEnabled}
+                          onChange={setVoiceEnabled}
+                          color="#a855f7"
                         />
+
+                        <Toggle
+                          label="Tự động đọc to khi AI phản hồi xong (Auto-Speak)"
+                          value={voiceAutoSpeak}
+                          onChange={setVoiceAutoSpeak}
+                          color="#a855f7"
+                        />
+
+                        {/* Sliders: Pitch & Rate */}
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-1">
+                          {/* Pitch */}
+                          <div className="flex flex-col gap-1.5 p-3 rounded-lg bg-black/40 border border-purple-500/20">
+                            <div className="flex justify-between items-center">
+                              <span style={{ ...mono, color: 'rgba(168,85,247,0.9)', fontSize: '10px' }}>
+                                ĐỘ TRẦM CỦA GIỌNG (PITCH):
+                              </span>
+                              <span style={{ ...mono, color: '#a855f7', fontSize: '11px' }}>{voicePitch.toFixed(2)}</span>
+                            </div>
+                            <input
+                              type="range"
+                              min={0.5}
+                              max={1.2}
+                              step={0.02}
+                              value={voicePitch}
+                              onChange={e => setVoicePitch(parseFloat(e.target.value))}
+                              className="w-full"
+                            />
+                            <span style={{ ...aptos, color: 'rgba(255,255,255,0.4)', fontSize: '9px' }}>
+                              0.78 = Giọng nam trầm tự nhiên, ấm áp
+                            </span>
+                          </div>
+
+                          {/* Rate */}
+                          <div className="flex flex-col gap-1.5 p-3 rounded-lg bg-black/40 border border-purple-500/20">
+                            <div className="flex justify-between items-center">
+                              <span style={{ ...mono, color: 'rgba(168,85,247,0.9)', fontSize: '10px' }}>
+                                TỐC ĐỘ ĐỌC CHẬM RÃI (RATE):
+                              </span>
+                              <span style={{ ...mono, color: '#a855f7', fontSize: '11px' }}>{voiceRate.toFixed(2)}x</span>
+                            </div>
+                            <input
+                              type="range"
+                              min={0.7}
+                              max={1.3}
+                              step={0.02}
+                              value={voiceRate}
+                              onChange={e => setVoiceRate(parseFloat(e.target.value))}
+                              className="w-full"
+                            />
+                            <span style={{ ...aptos, color: 'rgba(255,255,255,0.4)', fontSize: '9px' }}>
+                              0.92 = Tốc độ điềm đạm, rõ ràng từng âm tiết
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* Test voice button */}
+                        <div className="flex items-center gap-3 mt-1">
+                          <motion.button
+                            whileHover={{ scale: 1.03 }}
+                            whileTap={{ scale: 0.97 }}
+                            onClick={() => {
+                              sounds.playClick();
+                              if (isSpeaking) {
+                                stopSpeaking();
+                              } else {
+                                deepVoice.testVoice();
+                              }
+                            }}
+                            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-purple-600/20 border border-purple-500/40 text-purple-200 text-xs font-mono cursor-pointer"
+                          >
+                            <Volume2 className="w-3.5 h-3.5 text-purple-300" />
+                            <span>{isSpeaking ? 'DỪNG ĐỌC THỬ' : 'THỬ NGHIỆM GIỌNG NAM TRẦM'}</span>
+                          </motion.button>
+                        </div>
                       </div>
 
-                      <div className="flex gap-2">
-                        <button
-                          onClick={() => sounds.playStartup()}
-                          className="px-3 py-1.5 rounded-xl bg-cyan-500/10 border border-cyan-500/30 text-cyan-300 text-xs font-mono cursor-pointer"
-                        >
-                          Âm Khởi động
-                        </button>
-                        <button
-                          onClick={() => sounds.playScan()}
-                          className="px-3 py-1.5 rounded-xl bg-purple-500/10 border border-purple-500/30 text-purple-300 text-xs font-mono cursor-pointer"
-                        >
-                          Âm Quét Nơ-ron
-                        </button>
-                        <button
-                          onClick={() => sounds.playSuccess()}
-                          className="px-3 py-1.5 rounded-xl bg-green-500/10 border border-green-500/30 text-green-300 text-xs font-mono cursor-pointer"
-                        >
-                          Âm Hoàn thành
-                        </button>
+                      {/* Sci-Fi Web Audio SFX Section */}
+                      <div className="flex flex-col gap-3 p-4 rounded-xl" style={{ background: 'rgba(0,245,255,0.04)', border: '1px solid rgba(0,245,255,0.15)' }}>
+                        <h3 style={{ ...orb, color: '#0ea5e9', fontSize: '13px', margin: 0 }}>
+                          HIỆU ỨNG ÂM THANH TỔNG HỢP SCI-FI (WEB AUDIO)
+                        </h3>
+
+                        <Toggle
+                          label="Bật hiệu ứng âm thanh tổng hợp Web Audio"
+                          value={soundEnabled}
+                          onChange={setSoundEnabled}
+                          color="#0ea5e9"
+                        />
+
+                        <div className="flex flex-col gap-2 p-3 rounded-lg bg-black/40 border border-white/10">
+                          <div className="flex justify-between items-center">
+                            <span style={{ ...mono, color: 'rgba(0,245,255,0.8)', fontSize: '10px' }}>ÂM LƯỢNG HỆ THỐNG:</span>
+                            <span style={{ ...mono, color: '#0ea5e9', fontSize: '11px' }}>{Math.round(soundVolume * 100)}%</span>
+                          </div>
+                          <input
+                            type="range"
+                            min={0}
+                            max={1}
+                            step={0.05}
+                            value={soundVolume}
+                            onChange={e => setSoundVolume(parseFloat(e.target.value))}
+                            className="w-full"
+                          />
+                        </div>
+
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => sounds.playStartup()}
+                            className="px-3 py-1.5 rounded-xl bg-cyan-500/10 border border-cyan-500/30 text-cyan-300 text-xs font-mono cursor-pointer"
+                          >
+                            Âm Khởi động
+                          </button>
+                          <button
+                            onClick={() => sounds.playScan()}
+                            className="px-3 py-1.5 rounded-xl bg-purple-500/10 border border-purple-500/30 text-purple-300 text-xs font-mono cursor-pointer"
+                          >
+                            Âm Quét Nơ-ron
+                          </button>
+                          <button
+                            onClick={() => sounds.playSuccess()}
+                            className="px-3 py-1.5 rounded-xl bg-green-500/10 border border-green-500/30 text-green-300 text-xs font-mono cursor-pointer"
+                          >
+                            Âm Hoàn thành
+                          </button>
+                        </div>
                       </div>
                     </motion.div>
                   )}

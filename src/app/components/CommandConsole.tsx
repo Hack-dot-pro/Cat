@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   Terminal, Send, Trash2, Download, Paperclip, FileText,
-  X, Sparkles, RefreshCw, Layers, Cpu, CheckCircle
+  X, Sparkles, RefreshCw, Layers, Cpu, CheckCircle, Volume2, Square
 } from 'lucide-react';
 import { useApp, Message } from '../context/AppContext';
 import { sounds } from '../services/sound';
@@ -40,6 +40,9 @@ export function CommandConsole() {
     setUploadedFiles,
     userName,
     userFullName,
+    isSpeaking,
+    speakText,
+    stopSpeaking,
   } = useApp();
 
   const [input, setInput] = useState('');
@@ -283,16 +286,38 @@ export function CommandConsole() {
               >
                 {/* Header of message bubble */}
                 <div className="flex items-center justify-between gap-3 mb-1">
-                  <span
-                    style={{
-                      ...mono,
-                      color: msg.type === 'ai' ? '#00f5ff' : '#a855f7',
-                      fontSize: '9px',
-                      letterSpacing: '0.1em',
-                    }}
-                  >
-                    {msg.type === 'ai' ? 'CAT AI' : `${userName} (ADMIN)`}
-                  </span>
+                  <div className="flex items-center gap-2">
+                    <span
+                      style={{
+                        ...mono,
+                        color: msg.type === 'ai' ? '#00f5ff' : '#a855f7',
+                        fontSize: '9px',
+                        letterSpacing: '0.1em',
+                      }}
+                    >
+                      {msg.type === 'ai' ? 'CAT AI' : `${userName} (ADMIN)`}
+                    </span>
+                    {msg.type === 'ai' && (
+                      <button
+                        onClick={() => {
+                          sounds.playClick();
+                          if (isSpeaking) {
+                            stopSpeaking();
+                          } else {
+                            speakText(msg.text);
+                          }
+                        }}
+                        className="p-0.5 rounded hover:bg-cyan-500/20 text-cyan-400/60 hover:text-cyan-300 cursor-pointer transition-all"
+                        title={isSpeaking ? 'Dừng đọc' : 'Đọc bằng giọng nam trầm'}
+                      >
+                        {isSpeaking ? (
+                          <Square className="w-2.5 h-2.5 text-purple-400" />
+                        ) : (
+                          <Volume2 className="w-2.5 h-2.5" />
+                        )}
+                      </button>
+                    )}
+                  </div>
                   <span style={{ ...mono, color: 'rgba(255,255,255,0.25)', fontSize: '8px' }}>
                     {new Date(msg.timestamp).toLocaleTimeString('vi-VN', { hour12: false })}
                   </span>

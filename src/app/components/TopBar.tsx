@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
 import {
   Wifi, Shield, Cpu, Settings, Grid, Hand, Bell,
-  Activity, Volume2, VolumeX, FileText, Wrench, User
+  Activity, Volume2, VolumeX, FileText, Wrench, User, Bot
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { sounds } from '../services/sound';
@@ -25,6 +25,10 @@ export function TopBar() {
     setSoundEnabled,
     userFullName,
     userName,
+    isSpeaking,
+    stopSpeaking,
+    voiceAutoSpeak,
+    setVoiceAutoSpeak,
   } = useApp();
 
   useEffect(() => {
@@ -173,6 +177,43 @@ export function TopBar() {
             <Volume2 className="w-4 h-4 text-cyan-400" />
           ) : (
             <VolumeX className="w-4 h-4 text-gray-400" />
+          )}
+        </motion.button>
+
+        {/* Deep Male Voice Auto-Speak Toggle */}
+        <motion.button
+          whileHover={{ scale: 1.15 }}
+          whileTap={{ scale: 0.9 }}
+          onClick={() => {
+            sounds.playClick();
+            if (isSpeaking) {
+              stopSpeaking();
+            } else {
+              setVoiceAutoSpeak(!voiceAutoSpeak);
+              addNotification({
+                type: 'info',
+                title: 'Giọng đọc Nam Trầm CAT AI',
+                message: !voiceAutoSpeak ? 'Đã bật tự động đọc phản hồi (Giọng Nam Trầm).' : 'Đã tắt tự động đọc.',
+              });
+            }
+          }}
+          className="w-8 h-8 rounded-lg flex items-center justify-center cursor-pointer relative"
+          style={{
+            background: isSpeaking ? 'rgba(168,85,247,0.25)' : voiceAutoSpeak ? 'rgba(168,85,247,0.1)' : 'rgba(255,255,255,0.04)',
+            border: `1px solid ${isSpeaking ? '#a855f7' : voiceAutoSpeak ? 'rgba(168,85,247,0.4)' : 'rgba(255,255,255,0.15)'}`,
+            boxShadow: isSpeaking ? '0 0 15px rgba(168,85,247,0.5)' : 'none',
+          }}
+          title={isSpeaking ? 'Nhấn để dừng đọc' : voiceAutoSpeak ? 'Tắt tự động đọc giọng nam' : 'Bật tự động đọc giọng nam'}
+        >
+          {isSpeaking ? (
+            <motion.div animate={{ scale: [1, 1.25, 1] }} transition={{ duration: 0.6, repeat: Infinity }}>
+              <Volume2 className="w-4 h-4 text-purple-300" />
+            </motion.div>
+          ) : (
+            <Bot className={`w-4 h-4 ${voiceAutoSpeak ? 'text-purple-400' : 'text-gray-400'}`} />
+          )}
+          {isSpeaking && (
+            <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-purple-400 animate-ping" />
           )}
         </motion.button>
 
