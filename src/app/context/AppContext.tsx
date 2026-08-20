@@ -173,10 +173,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   // User Profile
   const [userFullName, setUserFullName] = useState<string>(() => {
-    return localStorage.getItem('cat_user_fullname') || import.meta.env.VITE_USER_FULL_NAME || 'Vinh';
+    return localStorage.getItem('kim_user_fullname') || localStorage.getItem('cat_user_fullname') || import.meta.env.VITE_USER_FULL_NAME || 'Vinh';
   });
   const [userName, setUserName] = useState<string>(() => {
-    return localStorage.getItem('cat_user_name') || import.meta.env.VITE_USER_NAME || 'Vinh_Admin';
+    return localStorage.getItem('kim_user_name') || localStorage.getItem('cat_user_name') || import.meta.env.VITE_USER_NAME || 'Vinh_Admin';
   });
 
   // AI Settings

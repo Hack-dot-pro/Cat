@@ -290,7 +290,7 @@ export function CommandConsole() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `cat-ai-console-log-${Date.now()}.txt`;
+    a.download = `thu-ky-kim-console-log-${Date.now()}.txt`;
     a.click();
     URL.revokeObjectURL(url);
     addNotification({ type: 'success', title: 'Đã xuất nhật ký', message: 'Lịch sử trò chuyện đã được tải về.' });

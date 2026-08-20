@@ -316,7 +316,7 @@ export class MCPService {
 
     // 5. Calculator & Math
     this.registerTool({
-      name: 'cat_calculator',
+      name: 'kim_calculator',
       description: 'Thực hiện các phép tính toán học, công thức khoa học và thống kê phức tạp.',
       parameters: {
         type: 'object',
@@ -341,7 +341,7 @@ export class MCPService {
 
     // 6. System Status & Diagnostics
     this.registerTool({
-      name: 'cat_system_stats',
+      name: 'kim_system_stats',
       description: 'Truy vấn thông số tài nguyên hệ thống, trạng thái nơ-ron, bộ nhớ đệm và thời gian uptime của Thư Ký Kim.',
       parameters: {
         type: 'object',
@@ -376,7 +376,7 @@ export class MCPService {
 
     // 7. Document Systemizer & Structure Parser
     this.registerTool({
-      name: 'cat_document_systemizer',
+      name: 'kim_document_systemizer',
       description: 'Phân tích, bóc tách cấu trúc đề mục, bảng số liệu và tạo sơ đồ quan hệ từ văn bản tài liệu.',
       parameters: {
         type: 'object',
@@ -413,7 +413,7 @@ export class MCPService {
 
     // 8. Crypto & Hash Generator
     this.registerTool({
-      name: 'cat_crypto_hasher',
+      name: 'kim_crypto_hasher',
       description: 'Tạo mã băm bảo mật SHA-256, UUID v4 hoặc sinh khóa bí mật ngẫu nhiên cho hệ thống.',
       parameters: {
         type: 'object',
@@ -448,7 +448,7 @@ export class MCPService {
 
     // 9. Date & Time Engine
     this.registerTool({
-      name: 'cat_datetime',
+      name: 'kim_datetime',
       description: 'Lấy thông tin thời gian hiện tại, chuyển đổi múi giờ và tính khoảng cách thời gian.',
       parameters: {
         type: 'object',
@@ -474,7 +474,7 @@ export class MCPService {
 
     // 10. Direct Web Fetcher / URL Content Reader
     this.registerTool({
-      name: 'cat_web_fetch',
+      name: 'kim_web_fetch',
       description: 'Gửi yêu cầu HTTP GET để trích xuất nội dung từ một địa chỉ URL công khai.',
       parameters: {
         type: 'object',

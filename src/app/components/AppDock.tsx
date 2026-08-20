@@ -123,7 +123,7 @@ export function AppDock() {
               <app.icon className="w-5 h-5" style={{ color: app.color }} />
 
               {/* Active indicator */}
-              {(app.id === 'cat') && (
+              {(app.id === 'kim') && (
                 <div
                   className="absolute -bottom-1.5 w-1.5 h-1.5 rounded-full"
                   style={{ background: app.color, boxShadow: `0 0 4px ${app.color}` }}

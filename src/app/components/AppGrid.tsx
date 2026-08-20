@@ -14,7 +14,7 @@ const aptos = { fontFamily: "'Aptos Narrow', 'Aptos', sans-serif" };
 
 const APPS = [
   // System
-  { id: 'terminal', name: 'Dòng lệnh CAT', icon: Terminal, color: '#00f5ff', cat: 'Hệ thống' },
+  { id: 'terminal', name: 'Dòng lệnh Thư Ký Kim', icon: Terminal, color: '#00f5ff', cat: 'Hệ thống' },
   { id: 'settings', name: 'Cài đặt AI', icon: Settings, color: '#64748b', cat: 'Hệ thống' },
   { id: 'monitor', name: 'Giám sát tài nguyên', icon: BarChart3, color: '#22c55e', cat: 'Hệ thống' },
   { id: 'security', name: 'Két bảo mật AES', icon: Lock, color: '#f59e0b', cat: 'Hệ thống' },

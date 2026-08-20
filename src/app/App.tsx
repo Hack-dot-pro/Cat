@@ -78,14 +78,14 @@ function MainLayout() {
       {/* Top Bar */}
       <TopBar />
 
-      {/* Main 3-column layout (Right panel +10% wider, Center column enlarged) */}
+      {/* Main 3-column layout (Responsive for PC, Laptops, Tablets) */}
       <div
-        className="flex flex-1 gap-4 px-4 overflow-hidden"
+        className="flex flex-1 gap-3 lg:gap-4 px-3 lg:px-5 overflow-hidden"
         style={{ marginTop: 56, marginBottom: 144 }}
       >
         {/* LEFT PANEL */}
         <div
-          className="w-72 flex-shrink-0 flex flex-col gap-3 overflow-hidden pt-4 pb-2"
+          className="w-64 lg:w-72 xl:w-80 flex-shrink-0 flex flex-col gap-2.5 overflow-hidden pt-3 pb-1"
         >
           {/* Panel tabs */}
           <div className="flex gap-2 flex-shrink-0">
@@ -103,16 +103,16 @@ function MainLayout() {
 
           {/* Panel content */}
           <div
-            className="flex-1 p-4 overflow-hidden"
+            className="flex-1 p-3.5 overflow-hidden"
             style={glassPanel(leftPanel === 'monitor' ? '#00f5ff' : '#a855f7')}
           >
             <AnimatePresence mode="wait">
               {leftPanel === 'monitor' ? (
-                <motion.div key="monitor" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="h-full">
+                <motion.div key="monitor" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="h-full overflow-y-auto" style={{ scrollbarWidth: 'thin' }}>
                   <SystemMonitor />
                 </motion.div>
               ) : (
-                <motion.div key="memory" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="h-full">
+                <motion.div key="memory" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="h-full overflow-y-auto" style={{ scrollbarWidth: 'thin' }}>
                   <MemoryPanel />
                 </motion.div>
               )}
@@ -120,8 +120,8 @@ function MainLayout() {
           </div>
         </div>
 
-        {/* CENTER COLUMN: Enlarged Holographic Core (+10% size) */}
-        <div className="flex-1 flex flex-col items-center justify-between py-2 overflow-hidden min-w-0">
+        {/* CENTER COLUMN: Enlarged Holographic Core */}
+        <div className="flex-1 flex flex-col items-center justify-between py-1 overflow-hidden min-w-0">
           {/* Header text */}
           <motion.div
             initial={{ opacity: 0, y: -10 }}
@@ -129,7 +129,7 @@ function MainLayout() {
             className="text-center flex-shrink-0"
           >
             <div
-              className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full mb-1"
+              className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full mb-0.5"
               style={{
                 background: 'rgba(0, 245, 255, 0.08)',
                 border: '1px solid rgba(0, 245, 255, 0.25)',
@@ -142,8 +142,8 @@ function MainLayout() {
             </div>
           </motion.div>
 
-          {/* Holographic 3D Core with 10% scale up */}
-          <div className="flex-1 flex items-center justify-center w-full min-h-0 scale-105">
+          {/* Holographic 3D Core */}
+          <div className="flex-1 flex items-center justify-center w-full min-h-0">
             <AICore />
           </div>
 
@@ -151,13 +151,14 @@ function MainLayout() {
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
-            className="w-full max-w-md flex flex-col gap-2 flex-shrink-0"
+            className="w-full max-w-lg flex flex-col gap-2 flex-shrink-0 mt-1"
           >
-            <div className="flex items-center justify-center gap-3">
+            <div className="flex items-center justify-center gap-2.5 flex-wrap">
               {[
                 { label: 'QUÉT NƠ-RON', color: '#00f5ff', action: 'scan' },
                 { label: 'PHÂN TÍCH TÀI LIỆU', color: '#a855f7', action: 'files' },
                 { label: 'CÔNG CỤ MCP', color: '#22c55e', action: 'mcp' },
+                { label: 'DÒNG LỆNH TERMINAL', color: '#00f5ff', action: 'terminal' },
                 { label: 'BẢO MẬT AES', color: '#f59e0b', action: 'encrypt' },
               ].map(({ label, color, action }) => (
                 <QuickActionButton key={label} label={label} color={color} action={action} />
@@ -166,9 +167,9 @@ function MainLayout() {
           </motion.div>
         </div>
 
-        {/* RIGHT PANEL (Increased by 10% from 288px to 325px) */}
+        {/* RIGHT PANEL (Wider chat console for PC/Laptop/Tablet view) */}
         <div
-          className="w-[325px] flex-shrink-0 flex flex-col gap-3 overflow-hidden pt-4 pb-2"
+          className="w-[370px] lg:w-[410px] xl:w-[450px] flex-shrink-0 flex flex-col gap-2.5 overflow-hidden pt-3 pb-1"
         >
           {/* Panel tabs */}
           <div className="flex gap-2 flex-shrink-0">
@@ -186,7 +187,7 @@ function MainLayout() {
 
           {/* Panel content */}
           <div
-            className="flex-1 p-4 overflow-hidden"
+            className="flex-1 p-3.5 overflow-hidden"
             style={glassPanel(rightPanel === 'console' ? '#00f5ff' : '#0ea5e9')}
           >
             <AnimatePresence mode="wait">

@@ -21,6 +21,8 @@ class KimSpeechRecognitionEngine {
   private wakeWords: string[] = [
     'thư ký kim',
     'thu ky kim',
+    'thư kí kim',
+    'thu ki kim',
     'em kim ơi',
     'em kim',
     'kim ơi',
@@ -31,12 +33,6 @@ class KimSpeechRecognitionEngine {
     'ok kim',
     'alo kim',
     'alô kim',
-    'cat',
-    'cát',
-    'cat ai',
-    'hey cat',
-    'ok cat',
-    'cát ơi',
   ];
 
   // Callbacks

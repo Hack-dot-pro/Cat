@@ -338,8 +338,8 @@ export function SettingsPanel() {
     // Save user profile
     setUserFullName(localFullName);
     setUserName(localUserName);
-    localStorage.setItem('cat_user_fullname', localFullName);
-    localStorage.setItem('cat_user_name', localUserName);
+    localStorage.setItem('kim_user_fullname', localFullName);
+    localStorage.setItem('kim_user_name', localUserName);
 
     // Save AI settings
     updateAiSettings({

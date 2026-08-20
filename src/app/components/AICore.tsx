@@ -33,12 +33,12 @@ const stateConfig = {
     ringColor: 'rgba(245,158,11,0.5)',
   },
   responding: {
-    color: '#a855f7',
-    glow: 'rgba(168, 85, 247, 0.6)',
+    color: '#ec4899',
+    glow: 'rgba(236, 72, 153, 0.6)',
     label: 'ĐANG PHẢN HỒI',
-    subLabel: 'ĐANG TRUYỀN DỮ LIỆU ĐẦU RA',
+    subLabel: 'GIỌNG NỮ THƯ KÝ KIM ĐANG NÓI',
     pulseSpeed: 0.6,
-    ringColor: 'rgba(168,85,247,0.5)',
+    ringColor: 'rgba(236,72,153,0.5)',
   },
 };
 
@@ -72,7 +72,7 @@ function Ring({
         marginLeft: -size / 2,
         marginTop: -size / 2,
         border: `${thickness}px ${dashed ? 'dashed' : 'solid'} ${color}`,
-        boxShadow: `0 0 8px ${color.replace('0.', '0.3')}`,
+        boxShadow: `0 0 10px ${color.replace('0.', '0.35')}`,
         transform: `rotateX(${tilt}deg)`,
         transformStyle: 'preserve-3d',
       }}
@@ -81,14 +81,16 @@ function Ring({
 }
 
 export function AICore() {
-  const { aiState, setAiState, addNotification, isSpeaking } = useApp();
-  const cfg = stateConfig[aiState];
+  const { aiState, setAiState, addNotification, isSpeaking, isListeningVoice, speechTranscript } = useApp();
+  const cfg = stateConfig[aiState] || stateConfig.idle;
   const [dataPoints, setDataPoints] = useState<{ x: number; y: number; val: string }[]>([]);
+  const [waveBars, setWaveBars] = useState<number[]>(() => Array(32).fill(0.2));
 
+  // Initialize and update orbiting data points
   useEffect(() => {
     const pts = Array(8).fill(0).map((_, i) => {
       const angle = (i / 8) * Math.PI * 2;
-      const r = 165; // increased radius for larger center
+      const r = 195; // increased radius for larger center
       return {
         x: Math.cos(angle) * r,
         y: Math.sin(angle) * r,
@@ -104,6 +106,38 @@ export function AICore() {
     return () => clearInterval(interval);
   }, []);
 
+  // Animate soundwave visualizer
+  useEffect(() => {
+    const active = isSpeaking || aiState === 'responding' || aiState === 'listening' || isListeningVoice;
+    const interval = setInterval(() => {
+      setWaveBars(
+        Array(32)
+          .fill(0)
+          .map((_, i) => {
+            const center = 16;
+            const dist = Math.abs(i - center) / center;
+            if (isSpeaking || aiState === 'responding') {
+              const t = Date.now() / 150;
+              return 0.25 + 0.75 * Math.abs(Math.sin(t + i * 0.3)) * (1 - dist * 0.3);
+            }
+            if (aiState === 'listening' || isListeningVoice) {
+              const activeBoost = speechTranscript ? 0.4 : 0.15;
+              return 0.2 + (Math.random() * 0.65 + activeBoost) * (1 - dist * 0.35);
+            }
+            if (aiState === 'processing') {
+              const t = Date.now() / 200;
+              return 0.2 + 0.4 * Math.abs(Math.sin(t + i * 0.4));
+            }
+            // Idle breathing
+            const t = Date.now() / 600;
+            return 0.15 + 0.2 * Math.abs(Math.sin(t + i * 0.2)) * (1 - dist * 0.4);
+          })
+      );
+    }, active ? 60 : 120);
+
+    return () => clearInterval(interval);
+  }, [aiState, isSpeaking, isListeningVoice, speechTranscript]);
+
   const handleClick = () => {
     sounds.playClick();
     const states: (typeof aiState)[] = ['idle', 'listening', 'processing', 'responding'];
@@ -115,123 +149,126 @@ export function AICore() {
     }
   };
 
+  const activeColor = isSpeaking ? '#ec4899' : cfg.color;
+  const activeGlow = isSpeaking ? 'rgba(236,72,153,0.7)' : cfg.glow;
+
   return (
-    <div className="flex flex-col items-center justify-center gap-6 select-none" style={{ perspective: '600px' }}>
-      {/* Outer data ring indicators (Increased by 10% from 380 to 420) */}
-      <div className="relative" style={{ width: 420, height: 420 }}>
+    <div className="flex flex-col items-center justify-center gap-4 select-none" style={{ perspective: '700px' }}>
+      {/* Outer Hologram Rings & Orbit (Enlarged to 480x480) */}
+      <div className="relative flex-shrink-0" style={{ width: 480, height: 480 }}>
         {/* Data point markers */}
         {dataPoints.map((pt, i) => (
           <motion.div
             key={i}
             animate={{ opacity: [0.4, 1, 0.4] }}
             transition={{ duration: 2 + i * 0.3, repeat: Infinity, delay: i * 0.25 }}
-            className="absolute flex items-center gap-1"
+            className="absolute flex items-center gap-1 pointer-events-none"
             style={{
               left: '50%',
               top: '50%',
               transform: `translate(${pt.x - 20}px, ${pt.y - 10}px)`,
             }}
           >
-            <div className="w-1.5 h-1.5 rounded-full" style={{ background: cfg.color, boxShadow: `0 0 4px ${cfg.color}` }} />
-            <span style={{ ...mono, color: cfg.color, fontSize: '9px', opacity: 0.7 }}>{pt.val}</span>
+            <div className="w-1.5 h-1.5 rounded-full" style={{ background: activeColor, boxShadow: `0 0 6px ${activeColor}` }} />
+            <span style={{ ...mono, color: activeColor, fontSize: '9px', opacity: 0.75 }}>{pt.val}</span>
           </motion.div>
         ))}
 
-        {/* 3D Gyroscope Rings */}
-        <Ring size={410} thickness={1} color={cfg.ringColor} duration={35} direction={1} dashed tilt={60} />
-        <Ring size={360} thickness={1} color={cfg.ringColor} duration={25} direction={-1} tilt={30} />
-        <Ring size={310} thickness={1.5} color={cfg.ringColor} duration={18} direction={1} dashed tilt={-45} />
-        <Ring size={260} thickness={1} color={cfg.color} duration={12} direction={-1} tilt={70} />
-        <Ring size={210} thickness={2} color={cfg.color} duration={8} direction={1} dashed />
-        <Ring size={160} thickness={1.5} color={cfg.ringColor} duration={5} direction={-1} />
+        {/* 3D Gyroscope Holographic Rings */}
+        <Ring size={470} thickness={1} color={cfg.ringColor} duration={35} direction={1} dashed tilt={60} />
+        <Ring size={415} thickness={1} color={cfg.ringColor} duration={25} direction={-1} tilt={30} />
+        <Ring size={355} thickness={1.5} color={cfg.ringColor} duration={18} direction={1} dashed tilt={-45} />
+        <Ring size={295} thickness={1} color={activeColor} duration={12} direction={-1} tilt={70} />
+        <Ring size={235} thickness={2} color={activeColor} duration={8} direction={1} dashed />
+        <Ring size={180} thickness={1.5} color={cfg.ringColor} duration={5} direction={-1} />
 
-        {/* Pulsing Core Sphere */}
+        {/* Pulsing Core Sphere (Enlarged to 160x160) */}
         <motion.div
           onClick={handleClick}
           animate={{
             scale: [1, 1.08, 1],
             boxShadow: [
-              `0 0 30px ${cfg.glow}, inset 0 0 20px ${cfg.glow}`,
-              `0 0 60px ${cfg.glow}, inset 0 0 40px ${cfg.glow}`,
-              `0 0 30px ${cfg.glow}, inset 0 0 20px ${cfg.glow}`,
+              `0 0 35px ${activeGlow}, inset 0 0 25px ${activeGlow}`,
+              `0 0 70px ${activeGlow}, inset 0 0 45px ${activeGlow}`,
+              `0 0 35px ${activeGlow}, inset 0 0 25px ${activeGlow}`,
             ],
           }}
           transition={{ duration: cfg.pulseSpeed, repeat: Infinity, ease: 'easeInOut' }}
           className="absolute rounded-full flex items-center justify-center cursor-pointer"
           style={{
-            width: 140,
-            height: 140,
+            width: 160,
+            height: 160,
             left: '50%',
             top: '50%',
-            marginLeft: -70,
-            marginTop: -70,
-            background: 'radial-gradient(circle, rgba(0, 15, 35, 0.95) 0%, rgba(0, 5, 15, 0.98) 100%)',
-            border: `2px solid ${cfg.color}`,
+            marginLeft: -80,
+            marginTop: -80,
+            background: 'radial-gradient(circle, rgba(0, 20, 45, 0.96) 0%, rgba(0, 5, 15, 0.99) 100%)',
+            border: `2.5px solid ${activeColor}`,
           }}
         >
           {/* Inner glow core */}
           <motion.div
-            animate={{ scale: [1, 1.15, 1], opacity: [0.8, 1, 0.8] }}
+            animate={{ scale: [1, 1.15, 1], opacity: [0.85, 1, 0.85] }}
             transition={{ duration: cfg.pulseSpeed, repeat: Infinity }}
-            className="rounded-full flex items-center justify-center flex-col gap-1"
+            className="rounded-full flex items-center justify-center flex-col gap-1.5"
             style={{
-              width: 130,
-              height: 130,
-              background: `radial-gradient(circle, ${cfg.color}25 0%, transparent 70%)`,
+              width: 148,
+              height: 148,
+              background: `radial-gradient(circle, ${activeColor}30 0%, transparent 70%)`,
             }}
           >
-            {/* Core logo */}
+            {/* Core logo icon */}
             <motion.div
               animate={{ rotate: aiState === 'processing' ? 360 : 0 }}
               transition={{ duration: 1.5, repeat: aiState === 'processing' ? Infinity : 0, ease: 'linear' }}
             >
-              <svg width="40" height="40" viewBox="0 0 36 36" fill="none">
-                <circle cx="18" cy="18" r="16" stroke={cfg.color} strokeWidth="1" opacity="0.5" />
-                <circle cx="18" cy="18" r="10" stroke={cfg.color} strokeWidth="1.5" opacity="0.8" />
-                <circle cx="18" cy="18" r="4" fill={cfg.color} />
-                <line x1="18" y1="2" x2="18" y2="8" stroke={cfg.color} strokeWidth="1.5" />
-                <line x1="18" y1="28" x2="18" y2="34" stroke={cfg.color} strokeWidth="1.5" />
-                <line x1="2" y1="18" x2="8" y2="18" stroke={cfg.color} strokeWidth="1.5" />
-                <line x1="28" y1="18" x2="34" y2="18" stroke={cfg.color} strokeWidth="1.5" />
+              <svg width="46" height="46" viewBox="0 0 36 36" fill="none">
+                <circle cx="18" cy="18" r="16" stroke={activeColor} strokeWidth="1.2" opacity="0.5" />
+                <circle cx="18" cy="18" r="10" stroke={activeColor} strokeWidth="1.8" opacity="0.85" />
+                <circle cx="18" cy="18" r="4.5" fill={activeColor} />
+                <line x1="18" y1="2" x2="18" y2="8" stroke={activeColor} strokeWidth="1.5" />
+                <line x1="18" y1="28" x2="18" y2="34" stroke={activeColor} strokeWidth="1.5" />
+                <line x1="2" y1="18" x2="8" y2="18" stroke={activeColor} strokeWidth="1.5" />
+                <line x1="28" y1="18" x2="34" y2="18" stroke={activeColor} strokeWidth="1.5" />
               </svg>
             </motion.div>
-            <span style={{ ...orb, color: cfg.color, fontSize: '9px', letterSpacing: '0.15em', textAlign: 'center', opacity: 0.95, fontWeight: 700 }}>
+            <span style={{ ...orb, color: activeColor, fontSize: '10px', letterSpacing: '0.18em', textAlign: 'center', opacity: 0.95, fontWeight: 700 }}>
               THƯ KÝ KIM
             </span>
           </motion.div>
         </motion.div>
       </div>
 
-      {/* State label */}
+      {/* State label & Subsystems */}
       <div className="flex flex-col items-center gap-2">
         <AnimatePresence mode="wait">
           <motion.div
-            key={aiState}
+            key={aiState + (isSpeaking ? '_spk' : '')}
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -8 }}
             transition={{ duration: 0.3 }}
-            className="flex flex-col items-center gap-1"
+            className="flex flex-col items-center gap-0.5"
           >
             <span
               style={{
                 ...orb,
-                color: isSpeaking ? '#ec4899' : cfg.color,
-                fontSize: '16px',
+                color: activeColor,
+                fontSize: '17px',
                 letterSpacing: '0.25em',
-                textShadow: `0 0 15px ${isSpeaking ? 'rgba(236,72,153,0.7)' : cfg.glow}`,
+                textShadow: `0 0 18px ${activeGlow}`,
               }}
             >
               {isSpeaking ? 'THƯ KÝ KIM ĐANG NÓI' : cfg.label}
             </span>
-            <span style={{ ...mono, color: 'rgba(255,255,255,0.45)', fontSize: '10px', letterSpacing: '0.12em' }}>
-              {isSpeaking ? 'ĐANG TỰ ĐỘNG ĐỌC CÂU TRẢ LỜI...' : cfg.subLabel}
+            <span style={{ ...mono, color: 'rgba(255,255,255,0.45)', fontSize: '11px', letterSpacing: '0.12em' }}>
+              {isSpeaking ? 'ĐANG PHÁT ÂM THANH GIỌNG NỮ...' : cfg.subLabel}
             </span>
           </motion.div>
         </AnimatePresence>
 
         {/* Subsystem status bars */}
-        <div className="flex items-center gap-3 mt-1">
+        <div className="flex items-center gap-3 mt-0.5">
           {['NƠ-RON', 'GIỌNG NÓI', 'BỘ NHỚ', 'MẠNG LƯỚI'].map((item, i) => (
             <div key={item} className="flex flex-col items-center gap-1">
               <div
@@ -242,7 +279,7 @@ export function AICore() {
                   className="h-full rounded-full"
                   animate={{ width: [`${50 + i * 10}%`, `${70 + i * 5}%`, `${50 + i * 10}%`] }}
                   transition={{ duration: 3 + i * 0.5, repeat: Infinity }}
-                  style={{ background: cfg.color, boxShadow: `0 0 4px ${cfg.color}` }}
+                  style={{ background: activeColor, boxShadow: `0 0 4px ${activeColor}` }}
                 />
               </div>
               <span style={{ ...mono, color: 'rgba(255,255,255,0.35)', fontSize: '8px' }}>
@@ -254,12 +291,34 @@ export function AICore() {
 
         {/* Click hint */}
         <motion.p
-          animate={{ opacity: [0.3, 0.7, 0.3] }}
+          animate={{ opacity: [0.35, 0.8, 0.35] }}
           transition={{ duration: 3, repeat: Infinity }}
-          style={{ ...aptos, color: 'rgba(0,245,255,0.6)', fontSize: '12px', marginTop: 4 }}
+          style={{ ...aptos, color: 'rgba(0,245,255,0.7)', fontSize: '12px', marginTop: 2 }}
         >
           NHẤN VÀO LÕI ĐỂ CHUYỂN TRẠNG THÁI THƯ KÝ KIM
         </motion.p>
+
+        {/* SOUNDWAVE AUDIO VISUALIZER - Positioned directly underneath Click Hint */}
+        <div
+          className="flex items-center justify-center gap-1 px-5 py-2.5 rounded-2xl mt-1"
+          style={{
+            background: 'rgba(0, 10, 25, 0.65)',
+            border: `1px solid ${activeColor}30`,
+            boxShadow: `0 0 20px ${activeColor}15, inset 0 0 10px rgba(0,0,0,0.5)`,
+          }}
+        >
+          {waveBars.map((heightFactor, idx) => (
+            <motion.div
+              key={idx}
+              className="w-1 rounded-full transition-all duration-75"
+              style={{
+                height: Math.max(4, Math.round(heightFactor * 32)),
+                background: `linear-gradient(180deg, ${activeColor} 0%, ${activeColor}55 100%)`,
+                boxShadow: isSpeaking || aiState === 'listening' ? `0 0 6px ${activeColor}` : 'none',
+              }}
+            />
+          ))}
+        </div>
       </div>
     </div>
   );

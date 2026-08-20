@@ -300,13 +300,13 @@ export function MCPPanel() {
                           onClick={() => {
                             sounds.playClick();
                             setSelectedTool(tool);
-                            if (tool.name === 'cat_calculator') {
+                            if (tool.name === 'kim_calculator') {
                               setTestArgs('{"expression": "25 * 4 + 100 / 2"}');
-                            } else if (tool.name === 'cat_crypto_hasher') {
-                              setTestArgs('{"input": "CAT_AI_2026", "algorithm": "SHA-256"}');
-                            } else if (tool.name === 'cat_datetime') {
+                            } else if (tool.name === 'kim_crypto_hasher') {
+                              setTestArgs('{"input": "THU_KY_KIM_2026", "algorithm": "SHA-256"}');
+                            } else if (tool.name === 'kim_datetime') {
                               setTestArgs('{"timezone": "Asia/Ho_Chi_Minh"}');
-                            } else if (tool.name === 'cat_system_stats') {
+                            } else if (tool.name === 'kim_system_stats') {
                               setTestArgs('{"detailLevel": "full"}');
                             } else {
                               setTestArgs('{}');
