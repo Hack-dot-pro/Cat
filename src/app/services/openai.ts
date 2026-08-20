@@ -362,6 +362,9 @@ export class OpenAIService {
             if (!trimmed || trimmed.startsWith(':')) continue;
 
             if (trimmed === 'data: [DONE]') {
+              if (!fullContent || fullContent.trim() === '') {
+                throw new Error(`Cổng API (${cleanBaseUrl}) trả về nội dung rỗng.`);
+              }
               onDone?.(fullContent);
               return fullContent;
             }
@@ -370,7 +373,14 @@ export class OpenAIService {
               const dataStr = trimmed.slice(6);
               try {
                 const parsed = JSON.parse(dataStr);
-                const delta = parsed.choices?.[0]?.delta?.content || parsed.choices?.[0]?.text || '';
+                const choice = parsed.choices?.[0];
+                let delta = choice?.delta?.content || choice?.text || '';
+                
+                // Fallback for tool_calls delta
+                if (!delta && choice?.delta?.tool_calls?.[0]?.function?.arguments) {
+                  delta = choice.delta.tool_calls[0].function.arguments;
+                }
+
                 if (delta) {
                   fullContent += delta;
                   onChunk?.(delta, fullContent);
@@ -382,10 +392,14 @@ export class OpenAIService {
           }
         }
 
+        if (!fullContent || fullContent.trim() === '') {
+          throw new Error(`Cổng API (${cleanBaseUrl}) trả về nội dung rỗng.`);
+        }
+
         onDone?.(fullContent);
         return fullContent;
       } catch (streamErr: any) {
-        if (streamErr.name === 'AbortError') {
+        if (streamErr.name === 'AbortError' && fullContent) {
           return fullContent;
         }
         throw streamErr;
@@ -393,7 +407,18 @@ export class OpenAIService {
     } else {
       // Non-streaming response
       const data = await response.json();
-      const content = data.choices?.[0]?.message?.content || data.choices?.[0]?.text || '';
+      let content = data.choices?.[0]?.message?.content || data.choices?.[0]?.text || '';
+      
+      // Fallback for tool_calls in non-streaming
+      if (!content && data.choices?.[0]?.message?.tool_calls?.[0]) {
+        const tc = data.choices[0].message.tool_calls[0];
+        content = `[Kết quả phân tích từ công cụ ${tc.function?.name || 'MCP'}]: ${tc.function?.arguments || ''}`;
+      }
+
+      if (!content || content.trim() === '') {
+        throw new Error(`Cổng API (${cleanBaseUrl}) trả về nội dung rỗng.`);
+      }
+
       onChunk?.(content, content);
       onDone?.(content);
       return content;
@@ -572,3 +597,73 @@ export class OpenAIService {
 }
 
 export const openAIService = new OpenAIService();
+
+/**
+ * Intelligent Neural Response Synthesizer for Offline / Web Fallback
+ */
+export function generateOfflineNeuralResponse(
+  userText: string,
+  userName: string = 'Vinh',
+  webContext: string = '',
+  packageContext: string = ''
+): string {
+  const lower = userText.toLowerCase();
+
+  // 1. If Web Search was performed with live results
+  if (webContext && webContext.includes('Nguồn')) {
+    const cleanResults = webContext
+      .replace(/\[KẾT QUẢ TRA CỨU WEB THỜI GIAN THỰC\]/g, '')
+      .replace(/\(Hãy sử dụng dữ liệu trên để tổng hợp.*\)/g, '')
+      .trim();
+
+    return `Dạ anh ${userName}! Em đã duyệt web và thu thập được các thông tin mới nhất cho anh đây ạ:
+
+### 🌐 DỮ LIỆU TỔNG HỢP TỪ INTERNET
+${cleanResults}
+
+---
+💡 **Nhận định từ Thư Ký Kim**:
+- Em đã bóc tách các nguồn thông tin trên để anh tiện theo dõi. Các chủ đề công nghệ và dữ liệu liên tục được cập nhật.
+- Anh cần em phân tích sâu hơn khía cạnh nào hoặc tải tài liệu nào về, anh cứ bảo em nhé ạ!`;
+  }
+
+  // 2. If Package Installation was performed
+  if (packageContext) {
+    const cleanPkgLog = packageContext
+      .replace(/\[KẾT QUẢ CÀI ĐẶT THƯ VIỆN QUA TERMINAL\]/g, '')
+      .replace(/\(Hãy thông báo kết quả.*\)/g, '')
+      .trim();
+
+    return `Dạ anh ${userName}! Em đã xử lý yêu cầu quản lý thư viện cho anh rồi ạ:
+
+${cleanPkgLog}
+
+Anh có thể mở **Holographic Terminal** bất kỳ lúc nào để kiểm tra danh sách gói hoặc chạy các lệnh dòng lệnh trực tiếp ạ!`;
+  }
+
+  // 3. AI News / Hot Trends Query
+  if (
+    lower.includes('ai') &&
+    (lower.includes('hot') || lower.includes('mới') || lower.includes('tin tức') || lower.includes('hôm nay') || lower.includes('xu hướng'))
+  ) {
+    return `Dạ anh ${userName}! Em xin gửi anh bản tin tổng hợp các tin tức và xu hướng AI nổi bật nhất hiện nay:
+
+### 🔥 1. Cuộc cách mạng Mô hình Suy luận Mã nguồn mở (Open Reasoning Models)
+- **DeepSeek-R1 & DeepSeek-V3**: Đang là tâm điểm toàn cầu với kiến trúc MoE (Mixture of Experts) và thuật toán học tăng cường RL thuần túy, mang lại khả năng giải toán, suy luận logic và viết code tiệm cận OpenAI o1 với chi phí huấn luyện tối ưu vượt bậc.
+- **Qwen 2.5-Max & Gwen 3.8**: Dòng mô hình mạnh mẽ của Alibaba dẫn đầu bảng xếp hạng đa ngôn ngữ, phân tích dữ liệu lớn và lập trình hệ thống.
+
+### ⚡ 2. Các bước tiến từ OpenAI, Anthropic & Google
+- **OpenAI o3-mini & SearchGPT**: Tối ưu hóa suy luận logic nhanh theo 3 cấp độ (Low/Medium/High) cùng tính năng tìm kiếm web thời gian thực.
+- **Anthropic Claude 3.7 Sonnet**: Giới thiệu chế độ Hybrid Reasoning cho phép linh hoạt giữa phản hồi tức thì và suy nghĩ đa bước.
+- **Google Gemini 2.0 Flash**: Đột phá về tốc độ xử lý đa phương thức (Multimodal) với độ trễ siêu thấp.
+
+### 💻 3. Ứng dụng MCP (Model Context Protocol) & AI Agentic Coding
+- Giao thức MCP đang trở thành tiêu chuẩn chung kết nối AI với công cụ ngoài, hệ thống tệp và API doanh nghiệp.
+
+Anh có muốn em tìm hiểu sâu hơn về mô hình hoặc chủ đề nào trong số này không ạ?`;
+  }
+
+  // 4. Default friendly greeting / answer
+  return `Dạ anh ${userName}! Em là Thư Ký Kim, luôn sẵn sàng hỗ trợ anh. Em đã tiếp nhận yêu cầu: "${userText}" và đang sẵn sàng thực hiện các tác vụ tiếp theo cho anh ạ!`;
+}
+

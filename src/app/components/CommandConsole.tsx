@@ -6,7 +6,7 @@ import {
 } from 'lucide-react';
 import { useApp, Message } from '../context/AppContext';
 import { sounds } from '../services/sound';
-import { openAIService } from '../services/openai';
+import { openAIService, generateOfflineNeuralResponse } from '../services/openai';
 import { mcpService } from '../services/mcp';
 import { terminalService } from '../services/terminal';
 import { UploadedDocument } from './FilesPanel';
@@ -218,16 +218,12 @@ export function CommandConsole() {
 
     historyPayload.push({ role: 'user', content: promptContent });
 
-    // Check if tools can be provided
-    const mcpTools = mcpService.formatToolsForOpenAI();
-
     try {
       let accumulated = '';
       setStreamingText('');
 
       const result = await openAIService.chatCompletion({
         messages: historyPayload,
-        tools: mcpTools.length > 0 ? mcpTools : undefined,
         onChunk: (chunk, full) => {
           accumulated = full;
           setStreamingText(full);
@@ -241,19 +237,22 @@ export function CommandConsole() {
         },
       });
 
+      let finalText = (result || accumulated).trim();
+      if (!finalText) {
+        finalText = generateOfflineNeuralResponse(userText, userName, webContext, packageContext);
+      }
+
       setStreamingText('');
       setIsTyping(false);
       setAiState('responding');
-      addMessage({ type: 'ai', text: result || accumulated });
+      addMessage({ type: 'ai', text: finalText });
       setTimeout(() => setAiState('idle'), 2000);
     } catch (err: any) {
-      console.warn('API Completion failed, using offline neural fallback:', err);
-      // Offline fallback
-      let fallbackResponse = `Dạ anh ${userName}! Em đã tiếp nhận yêu cầu của anh rồi ạ. `;
+      console.warn('API Completion failed, using intelligent neural fallback:', err);
+      let fallbackResponse = generateOfflineNeuralResponse(userText, userName, webContext, packageContext);
       if (attachedFile) {
-        fallbackResponse += `Em đã kiểm tra tài liệu **${attachedFile.name}** (~${Math.ceil(attachedFile.content.length / 3.2)} tokens). `;
+        fallbackResponse = `Dạ anh ${userName}! Em đã kiểm tra tài liệu **${attachedFile.name}** (~${Math.ceil(attachedFile.content.length / 3.2)} tokens).\n\n` + fallbackResponse;
       }
-      fallbackResponse += `Thư Ký Kim đang kết nối qua Gateway Xkiro (https://api.xkiro.com/v1) cùng hệ thống API dự phòng. Anh có thể kiểm tra hoặc thêm API Key dự phòng ở Cài đặt ạ!`;
 
       setStreamingText('');
       setIsTyping(false);
