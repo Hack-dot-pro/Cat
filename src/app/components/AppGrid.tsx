@@ -47,7 +47,7 @@ const APPS = [
 const CATEGORIES = ['Tất cả', 'Hệ thống', 'Trí tuệ AI', 'Đa phương tiện', 'Truyền thông', 'Công cụ'];
 
 export function AppGrid() {
-  const { appGridOpen, setAppGridOpen, setSettingsOpen, addNotification } = useApp();
+  const { appGridOpen, setAppGridOpen, setSettingsOpen, setFilesOpen, addNotification } = useApp();
   const [activeCategory, setActiveCategory] = useState('Tất cả');
   const [hoveredApp, setHoveredApp] = useState<string | null>(null);
 
@@ -57,6 +57,9 @@ export function AppGrid() {
     sounds.playClick();
     if (app.id === 'settings') {
       setSettingsOpen(true);
+      setAppGridOpen(false);
+    } else if (app.id === 'files') {
+      setFilesOpen(true);
       setAppGridOpen(false);
     } else {
       addNotification({

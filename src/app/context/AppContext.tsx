@@ -34,6 +34,19 @@ export interface MemoryItem {
   synced: boolean;
 }
 
+export interface UploadedDocument {
+  id: string;
+  name: string;
+  size: number;
+  type: 'pdf' | 'text' | 'json' | 'code' | 'csv';
+  content: string;
+  timestamp: Date;
+  summary?: string;
+  analysis?: string;
+  tokenCount?: number;
+  status: 'ready' | 'analyzing' | 'analyzed' | 'error';
+}
+
 interface AppContextType {
   aiState: AIState;
   setAiState: (s: AIState) => void;
@@ -52,11 +65,17 @@ interface AppContextType {
   setSettingsOpen: (v: boolean) => void;
   gestureOpen: boolean;
   setGestureOpen: (v: boolean) => void;
+  filesOpen: boolean;
+  setFilesOpen: (v: boolean) => void;
   leftPanel: 'monitor' | 'memory';
   setLeftPanel: (v: 'monitor' | 'memory') => void;
   rightPanel: 'console' | 'search';
   setRightPanel: (v: 'console' | 'search') => void;
   memories: MemoryItem[];
+  uploadedDocuments: UploadedDocument[];
+  addUploadedDocument: (doc: UploadedDocument) => void;
+  removeUploadedDocument: (id: string) => void;
+  analyzeDocument: (id: string, mode: 'summary' | 'deep' | 'extract') => Promise<void>;
   aiConfig: AIConfig;
   updateAIConfig: (cfg: Partial<AIConfig>) => void;
   sendAIChat: (text: string) => Promise<void>;
@@ -132,15 +151,40 @@ const initialMemories: MemoryItem[] = [
   },
 ];
 
+const initialSampleDocuments: UploadedDocument[] = [
+  {
+    id: 'doc-1',
+    name: 'Bao-Cao-Kien-Truc-CAT-AI.md',
+    size: 4280,
+    type: 'text',
+    content: `# BÁO CÁO KIẾN TRÚC HỆ ĐIỀU HÀNH HOLOGRAPHIC CAT v3.7\n\n## 1. Tổng quan Hệ thống\nCAT AI OS là hệ điều hành Holographic trợ lý thông minh đa phương thức, kết hợp đồ họa 3D thời gian thực với mô hình ngôn ngữ lớn (LLM).\n\n## 2. Các Phân hệ Cốt lõi\n- **Lõi Nơ-ron (AICore)**: Điều phối trạng thái Standby, Listening, Processing, Responding.\n- **Mô hình AI**: Tích hợp chuẩn OpenAI Chat Completions với Xkiro API và model Gwen 3.8 max.\n- **Bảo mật**: Mã hóa AES-256-GCM và trao đổi khóa RSA-4096.\n- **Nhận diện giọng nói**: Web Speech API tiếng Việt độ chính xác 95.8%.\n- **Âm thanh Sci-Fi**: Bộ tổng hợp Web Audio API Synthesizer đa tần số.\n\n## 3. Mục tiêu Phát triển\nTối ưu hóa suy luận biên (Edge Inference), phân tích dữ liệu tệp tin và mở rộng tính năng điều khiển không gian 3D.`,
+    timestamp: new Date(Date.now() - 3600000 * 4),
+    tokenCount: 412,
+    status: 'analyzed',
+    analysis: `### 📋 Tóm Tắt & Phân Tích Chuyên Sâu (Bởi Gwen 3.8 max):\n\n1. **Điểm nổi bật của tài liệu**:\n   - Hệ điều hành Holographic thế hệ mới với giao diện 3D sci-fi và hỗ trợ giọng nói tiếng Việt.\n   - Đã chuẩn hóa kết nối OpenAI Completions API tương thích với Xkiro API.\n   - Tích hợp bảo mật cấp độ cao AES-256 + RSA-4096.\n\n2. **Đánh giá kiến trúc**:\n   - Thiết kế dạng module tách biệt giúp dễ dàng mở rộng.\n   - Bộ tổng hợp âm thanh Web Audio API hoạt động hoàn toàn offline không tốn băng thông.\n\n3. **Khuyến nghị tiếp theo**:\n   - Tiếp tục hoàn thiện tính năng phân tích tài liệu đa định dạng (PDF, DOCX, CSV).`,
+  },
+  {
+    id: 'doc-2',
+    name: 'Cau-Hinh-Xkiro-API.json',
+    size: 1420,
+    type: 'json',
+    content: `{\n  "provider": "xkiro",\n  "baseUrl": "https://api.xkiro.com/v1",\n  "model": "Gwen 3.8 max",\n  "temperature": 0.7,\n  "maxTokens": 2048,\n  "streaming": true,\n  "features": [\n    "chat_completions",\n    "sse_streaming",\n    "edge_proxy_bypass_cors",\n    "vietnamese_natural_language"\n  ]\n}`,
+    timestamp: new Date(Date.now() - 3600000 * 2),
+    tokenCount: 160,
+    status: 'ready',
+  },
+];
+
 const BUILTIN_COMMAND_RESPONSES: Record<string, string> = {
   scan: 'Đang kích hoạt quét toàn diện môi trường và quang phổ. Màn hình Hologram 3D đang hiển thị...',
   status: 'Tất cả hệ thống ở mức tối ưu. CPU: 42% | RAM: 62% | Mạng: Trực tuyến | Bảo mật: AES-256 Đang chạy | Thời gian hoạt động: 4h 12m.',
   time: `Thời gian hiện tại: ${new Date().toLocaleTimeString('vi-VN')}. Đồng bộ hóa tham chiếu chuẩn UTC+7.`,
   hello: 'Xin chào! Hệ điều hành AI CAT đã sẵn sàng phục vụ. Toàn bộ mạng nơ-ron đang hoạt động.',
-  help: 'Các lệnh khả dụng: quét (scan), trạng thái (status), thời gian (time), xin chào (hello), cài đặt (settings), ứng dụng (apps), cử chỉ (gesture), thời tiết (weather), bộ nhớ (memory), bảo mật (encrypt). Bạn cũng có thể trò chuyện trực tiếp với AI.',
+  help: 'Các lệnh khả dụng: quét (scan), tệp tin (files), trạng thái (status), thời gian (time), xin chào (hello), cài đặt (settings), ứng dụng (apps), cử chỉ (gesture), thời tiết (weather), bộ nhớ (memory), bảo mật (encrypt). Bạn cũng có thể trò chuyện trực tiếp với AI.',
   settings: 'Đang mở bảng cấu hình hệ thống và kho khóa API...',
   apps: 'Đang khởi chạy lưới ứng dụng Holographic...',
   gesture: 'Đang kích hoạt module nhận diện cử chỉ không gian...',
+  files: 'Đang mở Trung tâm Phân tích Tệp tin & Tài liệu...',
   weather: 'Đang cập nhật dữ liệu khí quyển... Điều kiện: Trời quang, 28°C, Độ ẩm: 65%, Gió nhẹ. Chất lượng không khí: Tốt.',
   memory: 'Đã truy cập lõi bộ nhớ tri thức. 5 bản ghi sẵn sàng. Bộ nhớ cục bộ: Đã đồng bộ | Đám mây: Hoạt động | Git: Đã sao lưu.',
   encrypt: 'Đang chạy quy trình bảo mật... Xác thực mã hóa AES-256 hoàn tất. Khóa RSA-4096 đã thiết lập. Tất cả kênh được bảo vệ an toàn.',
@@ -158,9 +202,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [appGridOpen, setAppGridOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [gestureOpen, setGestureOpen] = useState(false);
+  const [filesOpen, setFilesOpen] = useState(false);
   const [leftPanel, setLeftPanel] = useState<'monitor' | 'memory'>('monitor');
   const [rightPanel, setRightPanel] = useState<'console' | 'search'>('console');
   const [memories] = useState<MemoryItem[]>(initialMemories);
+  const [uploadedDocuments, setUploadedDocuments] = useState<UploadedDocument[]>(initialSampleDocuments);
   const [aiConfig, setAiConfig] = useState<AIConfig>(getStoredAIConfig);
 
   const [soundEnabled, setSoundEnabledState] = useState<boolean>(() => sounds.isEnabled());
@@ -229,6 +275,92 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setTimeout(() => removeNotification(id), 6000);
   }, [removeNotification]);
 
+  const addUploadedDocument = useCallback((doc: UploadedDocument) => {
+    setUploadedDocuments(prev => [doc, ...prev]);
+  }, []);
+
+  const removeUploadedDocument = useCallback((id: string) => {
+    setUploadedDocuments(prev => prev.filter(d => d.id !== id));
+  }, []);
+
+  const analyzeDocument = useCallback(async (docId: string, mode: 'summary' | 'deep' | 'extract') => {
+    const doc = uploadedDocuments.find(d => d.id === docId);
+    if (!doc) return;
+
+    setUploadedDocuments(prev =>
+      prev.map(d => (d.id === docId ? { ...d, status: 'analyzing' } : d))
+    );
+
+    let instruction = '';
+    if (mode === 'summary') {
+      instruction = 'Hãy tóm tắt ngắn gọn, súc tích và nêu bật các nội dung chính của tài liệu sau bằng tiếng Việt theo định dạng gạch đầu dòng rõ ràng:';
+    } else if (mode === 'deep') {
+      instruction = 'Hãy phân tích chuyên sâu tài liệu sau bằng tiếng Việt: 1. Mục đích & Điểm cốt lõi 2. Đánh giá ưu/nhược điểm hoặc tính khả thi 3. Kết luận & Đề xuất hành động tiếp theo:';
+    } else {
+      instruction = 'Hãy trích xuất toàn bộ dữ liệu quan trọng, số liệu, thông số kỹ thuật và các bảng biểu/cấu hình từ tài liệu sau bằng tiếng Việt:';
+    }
+
+    const hasApiKey = Boolean(aiConfig.apiKey && aiConfig.apiKey.trim());
+    const isLocalOllama = aiConfig.provider === 'ollama';
+
+    if (hasApiKey || isLocalOllama) {
+      try {
+        const promptMessages: ChatMessageParam[] = [
+          { role: 'system', content: aiConfig.systemPrompt },
+          {
+            role: 'user',
+            content: `${instruction}\n\n[Tên tệp: ${doc.name}]\n\`\`\`\n${doc.content.slice(0, 15000)}\n\`\`\``,
+          },
+        ];
+
+        let result = '';
+        await callOpenAIChatCompletion({
+          messages: promptMessages,
+          config: { ...aiConfig, streaming: false },
+          onChunk: (_, accumulated) => {
+            result = accumulated;
+          },
+        });
+
+        const finalAnalysis = result || 'Phân tích hoàn tất.';
+        setUploadedDocuments(prev =>
+          prev.map(d => (d.id === docId ? { ...d, analysis: finalAnalysis, status: 'analyzed' } : d))
+        );
+        sounds.playSuccess();
+        addNotification({
+          type: 'success',
+          title: 'Phân Tích Hoàn Tất',
+          message: `Mô hình ${aiConfig.model} đã phân tích xong tệp "${doc.name}".`,
+        });
+      } catch (err: any) {
+        sounds.playError();
+        const fallbackErr = `Lỗi phân tích từ API: ${err.message || 'Không thể kết nối API'}`;
+        setUploadedDocuments(prev =>
+          prev.map(d => (d.id === docId ? { ...d, analysis: fallbackErr, status: 'error' } : d))
+        );
+        addNotification({
+          type: 'error',
+          title: 'Lỗi Phân Tích',
+          message: err.message || 'Không thể phân tích tài liệu',
+        });
+      }
+    } else {
+      // Simulated smart analysis when no API key is provided
+      setTimeout(() => {
+        const simulated = `### 📊 Kết Quả Phân Tích Tự Động (${mode.toUpperCase()}):\n\n- **Tên tệp**: ${doc.name}\n- **Dung lượng**: ${(doc.size / 1024).toFixed(1)} KB (~${doc.tokenCount} tokens)\n- **Định dạng**: ${doc.type.toUpperCase()}\n- **Điểm chính trích xuất**:\n  1. Tài liệu chứa ${doc.content.split('\n').length} dòng văn bản với dữ liệu cấu trúc tốt.\n  2. Không phát hiện cú pháp bất thường hoặc lỗi định dạng.\n  3. Đã sẵn sàng để truy vấn và trò chuyện trực tiếp.\n\n*(Mẹo: Điền API Key Xkiro / OpenAI trong Cài Đặt để mô hình Gwen 3.8 max phân tích thời gian thực)*.`;
+        setUploadedDocuments(prev =>
+          prev.map(d => (d.id === docId ? { ...d, analysis: simulated, status: 'analyzed' } : d))
+        );
+        sounds.playSuccess();
+        addNotification({
+          type: 'info',
+          title: 'Phân Tích Hoàn Tất (Giả Lập)',
+          message: `Đã phân tích xong tệp "${doc.name}".`,
+        });
+      }, 1200);
+    }
+  }, [uploadedDocuments, aiConfig, addNotification]);
+
   const sendAIChat = useCallback(async (userText: string) => {
     const text = userText.trim();
     if (!text) return;
@@ -246,6 +378,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       setTimeout(() => setAppGridOpen(true), 800);
     } else if ((lower.includes('cử chỉ') || lower.includes('gesture')) && !lower.includes('như thế nào')) {
       setTimeout(() => setGestureOpen(true), 800);
+    } else if ((lower.includes('tệp') || lower.includes('file') || lower.includes('tài liệu')) && !lower.includes('như thế nào')) {
+      setTimeout(() => setFilesOpen(true), 800);
     }
 
     // Add user message
@@ -323,7 +457,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         (k === 'hello' && lower.includes('chào')) ||
         (k === 'help' && lower.includes('trợ giúp')) ||
         (k === 'weather' && lower.includes('thời tiết')) ||
-        (k === 'settings' && lower.includes('cài đặt'))
+        (k === 'settings' && lower.includes('cài đặt')) ||
+        (k === 'files' && (lower.includes('tệp') || lower.includes('tài liệu')))
       );
 
       const simulatedReply = matchedKey
@@ -364,11 +499,17 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         setSettingsOpen,
         gestureOpen,
         setGestureOpen,
+        filesOpen,
+        setFilesOpen,
         leftPanel,
         setLeftPanel,
         rightPanel,
         setRightPanel,
         memories,
+        uploadedDocuments,
+        addUploadedDocument,
+        removeUploadedDocument,
+        analyzeDocument,
         aiConfig,
         updateAIConfig,
         sendAIChat,

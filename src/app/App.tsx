@@ -16,6 +16,7 @@ import { AppGrid } from './components/AppGrid';
 import { AppDock } from './components/AppDock';
 import { SettingsPanel } from './components/SettingsPanel';
 import { GesturePanel } from './components/GesturePanel';
+import { FilesPanel } from './components/FilesPanel';
 import { NotificationSystem } from './components/NotificationSystem';
 import { sounds } from './services/sound';
 
@@ -284,6 +285,7 @@ function MainLayout() {
       <AppGrid />
       <SettingsPanel />
       <GesturePanel />
+      <FilesPanel />
 
       {/* Notifications */}
       <NotificationSystem />

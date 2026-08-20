@@ -22,7 +22,7 @@ const DOCK_APPS = [
 ];
 
 export function AppDock() {
-  const { setAppGridOpen, setSettingsOpen, addNotification } = useApp();
+  const { setAppGridOpen, setSettingsOpen, setFilesOpen, addNotification } = useApp();
   const [hovered, setHovered] = useState<string | null>(null);
   const [tooltip, setTooltip] = useState<string | null>(null);
 
@@ -30,6 +30,8 @@ export function AppDock() {
     sounds.playClick();
     if (app.id === 'settings') {
       setSettingsOpen(true);
+    } else if (app.id === 'files') {
+      setFilesOpen(true);
     } else {
       addNotification({
         type: 'info',

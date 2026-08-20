@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Terminal, Send, Trash2, Download, Sparkles } from 'lucide-react';
-import { useApp } from '../context/AppContext';
+import { Terminal, Send, Trash2, Download, Sparkles, Paperclip, FileText, X } from 'lucide-react';
+import { useApp, UploadedDocument } from '../context/AppContext';
 import { sounds } from '../services/sound';
 
 const orb = { fontFamily: 'Orbitron, sans-serif' };
@@ -10,10 +10,10 @@ const raj = { fontFamily: 'Rajdhani, sans-serif' };
 
 const SUGGESTIONS = [
   'quét hệ thống',
+  'phân tích tài liệu',
   'trạng thái',
   'thời tiết',
   'triển khai',
-  'phân tích',
   'trợ giúp',
 ];
 
@@ -25,11 +25,16 @@ export function CommandConsole() {
     sendAIChat,
     aiConfig,
     setSettingsOpen,
+    setFilesOpen,
+    addUploadedDocument,
     addNotification,
   } = useApp();
+
   const [input, setInput] = useState('');
+  const [attachedFile, setAttachedFile] = useState<{ name: string; content: string; size: number } | null>(null);
   const endRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const isProcessing = aiState === 'processing';
 
@@ -37,11 +42,58 @@ export function CommandConsole() {
     endRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, aiState]);
 
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+    const file = files[0];
+
+    try {
+      const text = await file.text();
+      setAttachedFile({
+        name: file.name,
+        content: text,
+        size: file.size,
+      });
+
+      // Also register into uploaded documents
+      const newDoc: UploadedDocument = {
+        id: Date.now().toString() + Math.random().toString().slice(2, 6),
+        name: file.name,
+        size: file.size,
+        type: file.name.endsWith('.json') ? 'json' : file.name.endsWith('.csv') ? 'csv' : 'text',
+        content: text.slice(0, 100000),
+        timestamp: new Date(),
+        tokenCount: Math.round(text.length / 4),
+        status: 'ready',
+      };
+      addUploadedDocument(newDoc);
+      sounds.playSuccess();
+      addNotification({
+        type: 'info',
+        title: 'Đã Đính Kèm Tệp',
+        message: `Tệp "${file.name}" đã được đính kèm vào hội thoại.`,
+      });
+    } catch (err: any) {
+      sounds.playError();
+      addNotification({
+        type: 'error',
+        title: 'Lỗi Đính Kèm',
+        message: err.message || 'Không thể đọc tệp',
+      });
+    }
+  };
+
   const handleSubmit = async () => {
-    if (!input.trim() || isProcessing) return;
-    const text = input.trim();
+    if ((!input.trim() && !attachedFile) || isProcessing) return;
+
+    let fullPrompt = input.trim();
+    if (attachedFile) {
+      fullPrompt = `${fullPrompt ? fullPrompt + '\n\n' : 'Hãy phân tích tệp đính kèm sau:\n\n'}[Tài liệu đính kèm: ${attachedFile.name}]\n\`\`\`\n${attachedFile.content.slice(0, 8000)}\n\`\`\``;
+    }
+
     setInput('');
-    await sendAIChat(text);
+    setAttachedFile(null);
+    await sendAIChat(fullPrompt);
   };
 
   const handleExportChat = () => {
@@ -76,7 +128,24 @@ export function CommandConsole() {
             BẢNG ĐIỀU KHIỂN & DÒNG LỆNH
           </span>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5">
+          {/* Files Center button */}
+          <button
+            onClick={() => {
+              sounds.playClick();
+              setFilesOpen(true);
+            }}
+            className="flex items-center gap-1 px-2 py-0.5 rounded-md cursor-pointer hover:bg-white/5 transition-colors"
+            style={{
+              background: 'rgba(0,245,255,0.08)',
+              border: '1px solid rgba(0,245,255,0.25)',
+            }}
+            title="Mở Trung tâm Phân tích Tệp tin"
+          >
+            <FileText className="w-2.5 h-2.5 text-cyan-400" />
+            <span style={{ ...mono, color: '#00f5ff', fontSize: '8px' }}>TỆP TIN</span>
+          </button>
+
           {/* Active Model Badge */}
           <button
             onClick={() => {
@@ -92,7 +161,7 @@ export function CommandConsole() {
           >
             <Sparkles className="w-2.5 h-2.5 text-purple-400" />
             <span style={{ ...mono, color: '#a855f7', fontSize: '8px' }}>
-              {aiConfig.model.slice(0, 14)}
+              {aiConfig.model.slice(0, 12)}
             </span>
           </button>
 
@@ -242,6 +311,30 @@ export function CommandConsole() {
         <div ref={endRef} />
       </div>
 
+      {/* Attached file chip */}
+      {attachedFile && (
+        <div
+          className="flex items-center justify-between px-3 py-1.5 rounded-xl flex-shrink-0"
+          style={{
+            background: 'rgba(0,245,255,0.08)',
+            border: '1px solid rgba(0,245,255,0.3)',
+          }}
+        >
+          <div className="flex items-center gap-2 truncate">
+            <FileText className="w-3.5 h-3.5 text-cyan-400 flex-shrink-0" />
+            <span style={{ ...raj, color: '#ffffff', fontSize: '12px' }} className="truncate">
+              {attachedFile.name} ({(attachedFile.size / 1024).toFixed(1)} KB)
+            </span>
+          </div>
+          <button
+            onClick={() => setAttachedFile(null)}
+            className="p-1 hover:text-red-400 cursor-pointer"
+          >
+            <X className="w-3 h-3 text-gray-400" />
+          </button>
+        </div>
+      )}
+
       {/* Suggestions */}
       <div className="flex flex-wrap gap-1.5 flex-shrink-0">
         {SUGGESTIONS.map(s => (
@@ -251,8 +344,12 @@ export function CommandConsole() {
             whileTap={{ scale: 0.95 }}
             onClick={() => {
               sounds.playClick();
-              setInput(s);
-              inputRef.current?.focus();
+              if (s === 'phân tích tài liệu') {
+                setFilesOpen(true);
+              } else {
+                setInput(s);
+                inputRef.current?.focus();
+              }
             }}
             className="px-2.5 py-1 rounded-lg cursor-pointer"
             style={{
@@ -275,27 +372,50 @@ export function CommandConsole() {
         }}
       >
         <span style={{ ...mono, color: 'rgba(0,245,255,0.5)', fontSize: '12px' }}>{'>'}</span>
+
         <input
           ref={inputRef}
           value={input}
           onChange={e => setInput(e.target.value)}
           onKeyDown={e => e.key === 'Enter' && handleSubmit()}
-          placeholder="Nhập lệnh hoặc trò chuyện với CAT..."
+          placeholder={attachedFile ? `Nhập yêu cầu phân tích cho "${attachedFile.name}"...` : "Nhập lệnh hoặc trò chuyện với CAT..."}
           className="flex-1 outline-none bg-transparent"
           style={{ ...raj, color: 'rgba(255,255,255,0.85)', fontSize: '13px' }}
+        />
+
+        {/* Attach File Button */}
+        <input
+          ref={fileInputRef}
+          type="file"
+          onChange={handleFileUpload}
+          className="hidden"
+          accept=".txt,.md,.json,.csv,.js,.ts,.tsx,.jsx,.py,.html,.css,.xml,.log,.env,.sql,.pdf"
         />
         <motion.button
           whileHover={{ scale: 1.1 }}
           whileTap={{ scale: 0.9 }}
+          onClick={() => {
+            sounds.playClick();
+            fileInputRef.current?.click();
+          }}
+          className="p-1 cursor-pointer hover:text-cyan-400"
+          title="Đính kèm tệp tài liệu"
+        >
+          <Paperclip className="w-4 h-4" style={{ color: attachedFile ? '#00f5ff' : 'rgba(255,255,255,0.4)' }} />
+        </motion.button>
+
+        <motion.button
+          whileHover={{ scale: 1.1 }}
+          whileTap={{ scale: 0.9 }}
           onClick={handleSubmit}
-          disabled={!input.trim() || isProcessing}
+          disabled={(!input.trim() && !attachedFile) || isProcessing}
           className="w-7 h-7 rounded-lg flex items-center justify-center cursor-pointer"
           style={{
-            background: input.trim() && !isProcessing ? 'rgba(0,245,255,0.2)' : 'rgba(0,245,255,0.04)',
-            border: `1px solid ${input.trim() && !isProcessing ? 'rgba(0,245,255,0.5)' : 'rgba(0,245,255,0.1)'}`,
+            background: (input.trim() || attachedFile) && !isProcessing ? 'rgba(0,245,255,0.2)' : 'rgba(0,245,255,0.04)',
+            border: `1px solid ${(input.trim() || attachedFile) && !isProcessing ? 'rgba(0,245,255,0.5)' : 'rgba(0,245,255,0.1)'}`,
           }}
         >
-          <Send className="w-3.5 h-3.5" style={{ color: input.trim() && !isProcessing ? '#00f5ff' : 'rgba(0,245,255,0.3)' }} />
+          <Send className="w-3.5 h-3.5" style={{ color: (input.trim() || attachedFile) && !isProcessing ? '#00f5ff' : 'rgba(0,245,255,0.3)' }} />
         </motion.button>
       </div>
     </div>
