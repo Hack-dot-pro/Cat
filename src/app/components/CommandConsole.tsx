@@ -15,11 +15,11 @@ const mono = { fontFamily: 'Share Tech Mono, monospace' };
 const aptos = { fontFamily: "'Aptos Narrow', 'Aptos', sans-serif" };
 
 const SUGGESTIONS = [
-  'Hệ thống hóa tài liệu',
-  'Chạy chẩn đoán CAT AI',
+  'Thư Ký Kim kiểm tra lịch trình',
+  'Hệ thống hóa tài liệu giúp anh',
+  'Chẩn đoán hệ thống Thư Ký Kim',
   'Giao thức công cụ MCP',
   'Kiểm tra Gateway Xkiro',
-  'Phân tích kiến trúc nơ-ron',
   'Bảo mật và mã hóa AES',
 ];
 
@@ -144,11 +144,11 @@ export function CommandConsole() {
     } catch (err: any) {
       console.warn('API Completion failed, using offline neural fallback:', err);
       // Offline fallback
-      let fallbackResponse = `Xin chào ${userName}! Yêu cầu của bạn đã được tiếp nhận. `;
+      let fallbackResponse = `Dạ sếp ${userName}! Em đã tiếp nhận yêu cầu của sếp rồi ạ. `;
       if (attachedFile) {
-        fallbackResponse += `Tôi đã phân tích tài liệu **${attachedFile.name}** (~${Math.ceil(attachedFile.content.length / 3.2)} tokens). `;
+        fallbackResponse += `Em đã kiểm tra tài liệu **${attachedFile.name}** (~${Math.ceil(attachedFile.content.length / 3.2)} tokens). `;
       }
-      fallbackResponse += `Lõi nơ-ron CAT AI đang kết nối qua Gateway Xkiro (https://api.xkiro.com/v1). Nếu cần thay đổi API Key, bạn có thể nhấn vào biểu tượng Cài đặt ở góc trên.`;
+      fallbackResponse += `Thư Ký Kim đang kết nối qua Gateway Xkiro (https://api.xkiro.com/v1). Sếp có thể tùy chỉnh cài đặt bất cứ lúc nào ở biểu tượng bánh răng ạ!`;
 
       setStreamingText('');
       setIsTyping(false);
@@ -199,7 +199,7 @@ export function CommandConsole() {
         <div className="flex items-center gap-2">
           <Terminal className="w-4 h-4" style={{ color: '#00f5ff' }} />
           <span style={{ ...orb, color: '#00f5ff', fontSize: '11px', letterSpacing: '0.15em' }}>
-            DÒNG LỆNH CAT AI
+            DÒNG LỆNH THƯ KÝ KIM
           </span>
         </div>
         <div className="flex items-center gap-1.5">
@@ -290,12 +290,12 @@ export function CommandConsole() {
                     <span
                       style={{
                         ...mono,
-                        color: msg.type === 'ai' ? '#00f5ff' : '#a855f7',
+                        color: msg.type === 'ai' ? '#ec4899' : '#a855f7',
                         fontSize: '9px',
                         letterSpacing: '0.1em',
                       }}
                     >
-                      {msg.type === 'ai' ? 'CAT AI' : `${userName} (ADMIN)`}
+                      {msg.type === 'ai' ? 'THƯ KÝ KIM' : `${userName} (SẾP)`}
                     </span>
                     {msg.type === 'ai' && (
                       <button
@@ -307,11 +307,11 @@ export function CommandConsole() {
                             speakText(msg.text);
                           }
                         }}
-                        className="p-0.5 rounded hover:bg-cyan-500/20 text-cyan-400/60 hover:text-cyan-300 cursor-pointer transition-all"
-                        title={isSpeaking ? 'Dừng đọc' : 'Đọc bằng giọng nam trầm'}
+                        className="p-0.5 rounded hover:bg-pink-500/20 text-pink-400/70 hover:text-pink-300 cursor-pointer transition-all"
+                        title={isSpeaking ? 'Dừng đọc' : 'Đọc bằng giọng nữ Thư Ký Kim'}
                       >
                         {isSpeaking ? (
-                          <Square className="w-2.5 h-2.5 text-purple-400" />
+                          <Square className="w-2.5 h-2.5 text-pink-400" />
                         ) : (
                           <Volume2 className="w-2.5 h-2.5" />
                         )}
@@ -356,23 +356,23 @@ export function CommandConsole() {
             >
               <div
                 className="w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5"
-                style={{ background: 'rgba(0,245,255,0.1)', border: '1px solid rgba(0,245,255,0.3)' }}
+                style={{ background: 'rgba(236,72,153,0.15)', border: '1px solid rgba(236,72,153,0.35)' }}
               >
-                <div className="w-1.5 h-1.5 rounded-full" style={{ background: '#00f5ff' }} />
+                <div className="w-1.5 h-1.5 rounded-full" style={{ background: '#ec4899' }} />
               </div>
               <div
                 className="max-w-[88%] px-3.5 py-2.5 rounded-2xl"
                 style={{
-                  background: 'rgba(0, 245, 255, 0.05)',
-                  border: '1px solid rgba(0,245,255,0.2)',
+                  background: 'rgba(236,72,153,0.06)',
+                  border: '1px solid rgba(236,72,153,0.25)',
                   borderRadius: '4px 16px 16px 16px',
                 }}
               >
                 <div className="flex items-center gap-1.5 mb-1">
-                  <span style={{ ...mono, color: '#00f5ff', fontSize: '9px', letterSpacing: '0.1em' }}>
-                    CAT AI (ĐANG TRUYỀN DỮ LIỆU)
+                  <span style={{ ...mono, color: '#ec4899', fontSize: '9px', letterSpacing: '0.1em' }}>
+                    THƯ KÝ KIM (ĐANG SOẠN THẢO)
                   </span>
-                  <RefreshCw className="w-2.5 h-2.5 animate-spin text-cyan-400" />
+                  <RefreshCw className="w-2.5 h-2.5 animate-spin text-pink-400" />
                 </div>
                 <div style={{ ...aptos, color: 'rgba(255,255,255,0.9)', fontSize: '13px', lineHeight: '1.55' }}>
                   {streamingText || 'Đang tư duy và xử lý nơ-ron...'}

@@ -1,11 +1,12 @@
-// Model Context Protocol (MCP) Client & Tool Hub for CAT AI
-// Enables dynamic plugging of external tools, resources, and servers
+// Model Context Protocol (MCP) Client & Tool Hub for Thư Ký Kim
+// Supports external tools, JSON-RPC 2.0 servers, and dynamic tool orchestration
 
 export interface MCPToolParameter {
   type: string;
   description?: string;
   enum?: string[];
-  required?: boolean;
+  properties?: Record<string, MCPToolParameter>;
+  required?: string[];
 }
 
 export interface MCPTool {
@@ -16,7 +17,7 @@ export interface MCPTool {
     properties: Record<string, MCPToolParameter>;
     required?: string[];
   };
-  serverId: string;
+  serverId?: string;
   enabled: boolean;
   isBuiltin?: boolean;
   handler?: (args: any) => Promise<any>;
@@ -26,11 +27,9 @@ export interface MCPServer {
   id: string;
   name: string;
   url: string;
-  type: 'http' | 'sse' | 'builtin';
+  type: 'builtin' | 'http' | 'sse' | 'stdio';
   status: 'connected' | 'connecting' | 'disconnected' | 'error';
-  lastPing?: number;
   errorMessage?: string;
-  authHeader?: string;
   toolsCount: number;
 }
 
@@ -43,9 +42,10 @@ export interface MCPCallResult {
   executionTimeMs: number;
 }
 
-class MCPService {
-  private servers: MCPServer[] = [];
+export class MCPService {
   private tools: Map<string, MCPTool> = new Map();
+  private servers: MCPServer[] = [];
+  private listeners: Set<() => void> = new Set();
 
   constructor() {
     this.initBuiltinTools();
@@ -54,9 +54,9 @@ class MCPService {
 
   private initBuiltinTools() {
     const builtinServer: MCPServer = {
-      id: 'builtin_cat_core',
-      name: 'CAT AI Core Tools',
-      url: 'internal://cat-mcp-engine',
+      id: 'builtin_kim_core',
+      name: 'Thư Ký Kim Core Tools',
+      url: 'internal://kim-mcp-engine',
       type: 'builtin',
       status: 'connected',
       toolsCount: 6,
@@ -92,7 +92,7 @@ class MCPService {
     // 2. System Status & Diagnostics
     this.registerTool({
       name: 'cat_system_stats',
-      description: 'Truy vấn thông số tài nguyên hệ thống, trạng thái nơ-ron, bộ nhớ đệm và thời gian uptime của CAT AI.',
+      description: 'Truy vấn thông số tài nguyên hệ thống, trạng thái nơ-ron, bộ nhớ đệm và thời gian uptime của Thư Ký Kim.',
       parameters: {
         type: 'object',
         properties: {
@@ -105,8 +105,8 @@ class MCPService {
       handler: async (args: { detailLevel?: string }) => {
         const perf = performance.now();
         return {
-          system: 'CAT AI OS v3.8 (Holographic Neural Engine)',
-          user: 'Vinh_Admin',
+          system: 'Thư Ký Kim OS v3.8 (Holographic Assistant Engine)',
+          user: 'Vinh_Admin (Sếp Vinh)',
           status: 'OPTIMAL',
           uptime: `${Math.floor(perf / 60000)} phút ${Math.floor((perf % 60000) / 1000)} giây`,
           memory: {

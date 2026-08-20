@@ -1,4 +1,4 @@
-// Speech Recognition & Wake Word ("CAT") Engine with 1s Silence Detection for CAT AI
+// Speech Recognition & Wake Word ("Kim" / "Thư Ký Kim") Engine with 1s Silence Detection
 // Uses Web Speech Recognition API with Continuous Listening, Wake Word Detection, and 1000ms Debounce
 
 export interface SpeechRecognitionResultPayload {
@@ -8,7 +8,7 @@ export interface SpeechRecognitionResultPayload {
   confidence: number;
 }
 
-class CATSpeechRecognitionEngine {
+class KimSpeechRecognitionEngine {
   private recognition: any = null;
   private isListeningState: boolean = false;
   private isWakeWordActive: boolean = true;
@@ -19,17 +19,24 @@ class CATSpeechRecognitionEngine {
   private interimTranscript: string = '';
 
   private wakeWords: string[] = [
+    'thư ký kim',
+    'thu ky kim',
+    'em kim ơi',
+    'em kim',
+    'kim ơi',
+    'chị kim',
+    'cô kim',
+    'kim',
+    'hey kim',
+    'ok kim',
+    'alo kim',
+    'alô kim',
     'cat',
     'cát',
     'cat ai',
     'hey cat',
     'ok cat',
     'cát ơi',
-    'cat ơi',
-    'alo cat',
-    'alô cat',
-    'kết',
-    'kat',
   ];
 
   // Callbacks
@@ -134,7 +141,10 @@ class CATSpeechRecognitionEngine {
     let command = cleaned;
     let wakeWordFound = false;
 
-    for (const w of this.wakeWords) {
+    // Sort wake words by length descending so longer phrases match first
+    const sortedWakeWords = [...this.wakeWords].sort((a, b) => b.length - a.length);
+
+    for (const w of sortedWakeWords) {
       const regex = new RegExp(`^(${w})\\b[,\\s]*`, 'i');
       if (regex.test(command)) {
         wakeWordFound = true;
@@ -145,7 +155,7 @@ class CATSpeechRecognitionEngine {
 
     // Also check if wake word is anywhere in the sentence
     if (!wakeWordFound) {
-      for (const w of this.wakeWords) {
+      for (const w of sortedWakeWords) {
         if (command.toLowerCase().includes(w)) {
           wakeWordFound = true;
           command = command.replace(new RegExp(`\\b${w}\\b`, 'gi'), '').trim();
@@ -232,4 +242,4 @@ class CATSpeechRecognitionEngine {
   }
 }
 
-export const speechEngine = new CATSpeechRecognitionEngine();
+export const speechEngine = new KimSpeechRecognitionEngine();

@@ -12,7 +12,7 @@ const stateConfig = {
     color: '#00f5ff',
     glow: 'rgba(0, 245, 255, 0.5)',
     label: 'CHỜ LỆNH',
-    subLabel: 'LÕI NƠ-RON CAT AI TRỰC TUYẾN',
+    subLabel: 'TRỢ LÝ THƯ KÝ KIM TRỰC TUYẾN',
     pulseSpeed: 3,
     ringColor: 'rgba(0,245,255,0.4)',
   },
@@ -20,7 +20,7 @@ const stateConfig = {
     color: '#22c55e',
     glow: 'rgba(34, 197, 94, 0.6)',
     label: 'ĐANG LẮNG NGHE',
-    subLabel: 'NHẬN DIỆN GIỌNG NÓI ĐANG KÍCH HOẠT',
+    subLabel: 'GỌI "KIM" HOẶC NÓI LỆNH...',
     pulseSpeed: 0.8,
     ringColor: 'rgba(34,197,94,0.5)',
   },
@@ -111,7 +111,7 @@ export function AICore() {
     setAiState(next);
     if (next === 'listening') {
       sounds.playVoiceStart();
-      addNotification({ type: 'success', title: 'Micro kích hoạt', message: 'CAT AI đang lắng nghe lệnh giọng nói...' });
+      addNotification({ type: 'success', title: 'Micro kích hoạt', message: 'Thư Ký Kim đang lắng nghe lệnh giọng nói...' });
     }
   };
 
@@ -196,7 +196,7 @@ export function AICore() {
               </svg>
             </motion.div>
             <span style={{ ...orb, color: cfg.color, fontSize: '9px', letterSpacing: '0.15em', textAlign: 'center', opacity: 0.95, fontWeight: 700 }}>
-              CAT AI
+              THƯ KÝ KIM
             </span>
           </motion.div>
         </motion.div>
@@ -216,16 +216,16 @@ export function AICore() {
             <span
               style={{
                 ...orb,
-                color: isSpeaking ? '#a855f7' : cfg.color,
+                color: isSpeaking ? '#ec4899' : cfg.color,
                 fontSize: '16px',
                 letterSpacing: '0.25em',
-                textShadow: `0 0 15px ${isSpeaking ? 'rgba(168,85,247,0.7)' : cfg.glow}`,
+                textShadow: `0 0 15px ${isSpeaking ? 'rgba(236,72,153,0.7)' : cfg.glow}`,
               }}
             >
-              {isSpeaking ? 'GIỌNG NAM TRẦM' : cfg.label}
+              {isSpeaking ? 'THƯ KÝ KIM ĐANG NÓI' : cfg.label}
             </span>
             <span style={{ ...mono, color: 'rgba(255,255,255,0.45)', fontSize: '10px', letterSpacing: '0.12em' }}>
-              {isSpeaking ? 'ĐANG TỰ ĐỘNG ĐỌC PHẢN HỒI...' : cfg.subLabel}
+              {isSpeaking ? 'ĐANG TỰ ĐỘNG ĐỌC CÂU TRẢ LỜI...' : cfg.subLabel}
             </span>
           </motion.div>
         </AnimatePresence>
@@ -258,7 +258,7 @@ export function AICore() {
           transition={{ duration: 3, repeat: Infinity }}
           style={{ ...aptos, color: 'rgba(0,245,255,0.6)', fontSize: '12px', marginTop: 4 }}
         >
-          NHẤN VÀO LÕI ĐỂ CHUYỂN TRẠNG THÁI CAT AI
+          NHẤN VÀO LÕI ĐỂ CHUYỂN TRẠNG THÁI THƯ KÝ KIM
         </motion.p>
       </div>
     </div>

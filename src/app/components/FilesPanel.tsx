@@ -66,7 +66,7 @@ export function FilesPanel() {
         addNotification({
           type: 'success',
           title: 'Tải tài liệu thành công',
-          message: `Đã nạp file "${file.name}" (${(file.size / 1024).toFixed(1)} KB) vào bộ nhớ CAT AI.`,
+          message: `Đã nạp file "${file.name}" (${(file.size / 1024).toFixed(1)} KB) vào bộ nhớ Thư Ký Kim.`,
         });
       };
 
@@ -124,7 +124,7 @@ export function FilesPanel() {
       addNotification({
         type: 'success',
         title: 'Hệ thống hóa hoàn tất',
-        message: `${modeLabels[mode]} đã được hoàn thành bởi CAT AI.`,
+        message: `${modeLabels[mode]} đã được hoàn thành bởi Thư Ký Kim.`,
       });
     } catch (err: any) {
       sounds.playError();
@@ -144,11 +144,11 @@ export function FilesPanel() {
     sounds.playClick();
     addMessage({
       type: 'user',
-      text: `Đã nạp tài liệu [${activeDoc.name}]. Hãy hỗ trợ tôi phân tích và giải đáp các câu hỏi dựa trên tài liệu này.`,
+      text: `Đã nạp tài liệu [${activeDoc.name}]. Thư Ký Kim hãy hỗ trợ anh phân tích và giải đáp nhé!`,
     });
     addMessage({
       type: 'ai',
-      text: `Tôi đã tiếp nhận tài liệu **${activeDoc.name}** (${(activeDoc.size / 1024).toFixed(1)} KB, ~${Math.ceil(activeDoc.content.length / 3.5)} tokens). Bạn có thể hỏi bất kỳ thông tin nào liên quan đến tài liệu này!`,
+      text: `Dạ sếp! Em đã tiếp nhận tài liệu **${activeDoc.name}** (${(activeDoc.size / 1024).toFixed(1)} KB, ~${Math.ceil(activeDoc.content.length / 3.5)} tokens). Sếp cứ hỏi bất kỳ thông tin nào cần bóc tách nhé ạ!`,
     });
     setFilesOpen(false);
   };
@@ -213,7 +213,7 @@ export function FilesPanel() {
                     TRUNG TÂM HỆ THỐNG HÓA TÀI LIỆU & DỮ LIỆU
                   </h2>
                   <p style={{ ...mono, color: 'rgba(0,245,255,0.5)', fontSize: '10px', marginTop: 2 }}>
-                    CAT AI NEURAL DOCUMENT SYSTEMIZER — V2.4
+                    THƯ KÝ KIM NEURAL DOCUMENT SYSTEMIZER — V2.4
                   </p>
                 </div>
               </div>

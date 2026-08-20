@@ -101,12 +101,12 @@ export function VoiceBar() {
     : '#00f5ff';
 
   const stateLabel = isListening
-    ? 'ĐANG LẮNG NGHE (WAKE WORD: "CAT")'
+    ? 'ĐANG LẮNG NGHE (GỌI "KIM" HOẶC "THƯ KÝ KIM")'
     : isProcessing
-    ? 'ĐANG PHÂN TÍCH NƠ-RON'
+    ? 'THƯ KÝ KIM ĐANG SUY NGHĨ...'
     : isResponding
-    ? 'GIỌNG NAM TRẦM ĐANG PHÁT'
-    : 'SẴN SÀNG (GỌI "CAT" ĐỂ NÓI)';
+    ? 'GIỌNG NỮ THƯ KÝ KIM ĐANG NÓI'
+    : 'SẴN SÀNG (GỌI "KIM" HOẶC BẤM MIC ĐỂ NÓI)';
 
   return (
     <div
@@ -223,7 +223,7 @@ export function VoiceBar() {
                 value={input}
                 onChange={e => setInput(e.target.value)}
                 onKeyDown={e => e.key === 'Enter' && handleTextSubmit()}
-                placeholder="Nhập lệnh nhanh hoặc câu hỏi cho CAT AI..."
+                placeholder="Nhập yêu cầu hoặc câu hỏi cho Thư Ký Kim..."
                 className="flex-1 outline-none bg-transparent"
                 style={{ ...aptos, color: 'rgba(255,255,255,0.9)', fontSize: '13px' }}
               />

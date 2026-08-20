@@ -101,19 +101,19 @@ const initialMessages: Message[] = [
   {
     id: '1',
     type: 'ai',
-    text: 'Hệ điều hành **CAT AI v3.8** đã khởi tạo thành công. Lõi nơ-ron đa tầng trực tuyến. Chào mừng **Vinh_Admin** (Vinh)! Giọng đọc nam trầm và nhận diện lệnh gọi **"CAT"** (tự động duyệt sau 1s ngắt quãng) đã sẵn sàng phục vụ.',
+    text: 'Dạ, em chào **Sếp Vinh** (Vinh_Admin)! Em là **Thư Ký Kim** — Trợ lý ảo AI của sếp. Hệ điều hành Hologram và giọng đọc nữ ngọt ngào đã sẵn sàng. Sếp cần em hỗ trợ công việc gì hôm nay ạ?',
     timestamp: new Date(Date.now() - 8000),
   },
   {
     id: '2',
     type: 'user',
-    text: 'Kiểm tra trạng thái hệ thống và tài nguyên nơ-ron.',
+    text: 'Kim ơi, kiểm tra trạng thái hệ thống và tài nguyên nơ-ron giúp anh.',
     timestamp: new Date(Date.now() - 5000),
   },
   {
     id: '3',
     type: 'ai',
-    text: 'Chẩn đoán hoàn tất: CPU: 38% định mức. Bộ nhớ: 6.2GB/16GB. Độ trễ Gateway: 18ms. Giao thức bảo mật: AES-256 kích hoạt. Toàn bộ 6 công cụ MCP lõi đang trực tuyến.',
+    text: 'Dạ sếp, em đã kiểm tra xong: CPU đang ở mức 38% ổn định, bộ nhớ 6.2GB/16GB, độ trễ kết nối Gateway Xkiro là 18ms. Toàn bộ 6 công cụ MCP và hệ thống nhận diện giọng nói đã sẵn sàng phục vụ sếp ạ!',
     timestamp: new Date(Date.now() - 3000),
   },
 ];
@@ -121,7 +121,7 @@ const initialMessages: Message[] = [
 const initialMemories: MemoryItem[] = [
   {
     id: '1',
-    title: 'Cấu hình CAT AI & Gateway Xkiro',
+    title: 'Cấu hình Thư Ký Kim & Gateway Xkiro',
     content: 'Cấu hình hoàn tất chuẩn OpenAI Completions với base URL https://api.xkiro.com/v1 và mô hình Gwen 3.8 max. Độ trễ 18ms.',
     tags: ['cấu hình', 'gateway', 'xkiro'],
     timestamp: new Date(Date.now() - 86400000 * 2),
@@ -129,9 +129,9 @@ const initialMemories: MemoryItem[] = [
   },
   {
     id: '2',
-    title: 'Nhận diện Giọng nói & Wake Word "CAT"',
-    content: 'Kích hoạt từ khóa "CAT", "CAT AI", "Cát ơi" và tự động gửi lệnh sau 1 giây im lặng (Silence 1s).',
-    tags: ['voice', 'wake_word', 'cat'],
+    title: 'Nhận diện Giọng nói & Wake Word "Kim" / "Thư Ký Kim"',
+    content: 'Kích hoạt từ khóa "Kim", "Thư Ký Kim", "Kim ơi", "Em Kim" và tự động gửi lệnh sau 1 giây im lặng (Silence 1s).',
+    tags: ['voice', 'wake_word', 'kim'],
     timestamp: new Date(Date.now() - 86400000),
     synced: true,
   },
@@ -145,8 +145,8 @@ const initialMemories: MemoryItem[] = [
   },
   {
     id: '4',
-    title: 'Thông tin Quản trị viên',
-    content: 'Người dùng: Vinh | Username: Vinh_Admin | Quyền hạn: Toàn quyền truy cập hệ thống CAT AI.',
+    title: 'Thông tin Quản trị viên (Sếp Vinh)',
+    content: 'Người dùng: Vinh | Username: Vinh_Admin | Quyền hạn: Sếp / Quản trị viên tối cao của Thư Ký Kim.',
     tags: ['admin', 'vinh', 'profile'],
     timestamp: new Date(Date.now() - 3600000 * 2),
     synced: true,
@@ -278,7 +278,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
       setTimeout(() => setAiState('idle'), 2000);
     } catch (err) {
-      const fallback = `Tôi đã nhận lệnh bằng giọng nói: "${raw}". Lõi nơ-ron CAT AI đang xử lý theo yêu cầu của ${userName}.`;
+      const fallback = `Dạ sếp Vinh, em đã nhận lệnh giọng nói: "${raw}". Thư Ký Kim đang xử lý ngay cho sếp ạ!`;
       setAiState('responding');
       setMessages(prev => [...prev, { id: Date.now().toString(), type: 'ai', text: fallback, timestamp: new Date() }]);
 

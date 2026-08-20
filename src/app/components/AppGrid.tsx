@@ -24,7 +24,7 @@ const APPS = [
   { id: 'firewall', name: 'Tường lửa', icon: Shield, color: '#ef4444', cat: 'Hệ thống' },
 
   // AI & Tools
-  { id: 'cat', name: 'Lõi CAT AI', icon: Brain, color: '#a855f7', cat: 'AI' },
+  { id: 'kim', name: 'Lõi Thư Ký Kim', icon: Brain, color: '#ec4899', cat: 'AI' },
   { id: 'files', name: 'Hệ thống hóa Tài liệu', icon: FileText, color: '#f59e0b', cat: 'AI' },
   { id: 'mcp', name: 'Giao thức MCP Tools', icon: Wrench, color: '#22c55e', cat: 'AI' },
   { id: 'vision', name: 'Thị giác AI Vision', icon: Camera, color: '#ec4899', cat: 'AI' },
@@ -93,7 +93,7 @@ export function AppGrid() {
           <div className="flex items-center justify-between max-w-5xl mx-auto w-full mb-6">
             <div>
               <h2 style={{ ...orb, color: '#00f5ff', fontSize: '18px', letterSpacing: '0.2em' }}>
-                HỆ THỐNG ỨNG DỤNG CAT AI
+                HỆ THỐNG ỨNG DỤNG THƯ KÝ KIM
               </h2>
               <p style={{ ...mono, color: 'rgba(0,245,255,0.5)', fontSize: '11px', marginTop: 4 }}>
                 DANH MỤC ỨNG DỤNG VÀ MODULE ĐIỀU HÀNH

@@ -136,7 +136,7 @@ function MainLayout() {
             >
               <div className="w-1.5 h-1.5 rounded-full" style={{ background: '#00f5ff', boxShadow: '0 0 8px #00f5ff' }} />
               <span style={{ ...mono, color: '#00f5ff', fontSize: '10px', letterSpacing: '0.15em' }}>
-                CAT AI HOLOGRAPHIC NEURAL OS
+                THƯ KÝ KIM — HOLOGRAPHIC AI ASSISTANT
               </span>
             </div>
           </motion.div>

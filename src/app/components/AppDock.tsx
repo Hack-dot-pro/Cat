@@ -12,7 +12,7 @@ const mono = { fontFamily: 'Share Tech Mono, monospace' };
 const aptos = { fontFamily: "'Aptos Narrow', 'Aptos', sans-serif" };
 
 const DOCK_APPS = [
-  { id: 'cat', name: 'CAT AI', icon: Brain, color: '#a855f7' },
+  { id: 'kim', name: 'Thư Ký Kim', icon: Brain, color: '#ec4899' },
   { id: 'terminal', name: 'Dòng lệnh', icon: Terminal, color: '#00f5ff' },
   { id: 'files', name: 'Tài liệu', icon: FileText, color: '#f59e0b' },
   { id: 'mcp', name: 'Công cụ MCP', icon: Wrench, color: '#22c55e' },
@@ -64,8 +64,8 @@ export function AppDock() {
     >
       {/* Left label */}
       <div className="absolute left-6 flex flex-col">
-        <span style={{ ...orb, color: 'rgba(0,245,255,0.6)', fontSize: '9px', letterSpacing: '0.15em' }}>CAT AI</span>
-        <span style={{ ...mono, color: 'rgba(0,245,255,0.35)', fontSize: '7px' }}>APP DOCK</span>
+        <span style={{ ...orb, color: 'rgba(236,72,153,0.75)', fontSize: '9px', letterSpacing: '0.15em' }}>THƯ KÝ KIM</span>
+        <span style={{ ...mono, color: 'rgba(236,72,153,0.4)', fontSize: '7px' }}>ASSISTANT DOCK</span>
       </div>
 
       {/* Dock inner container */}

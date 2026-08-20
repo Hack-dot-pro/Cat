@@ -137,7 +137,7 @@ export function MCPPanel() {
                     MODEL CONTEXT PROTOCOL (MCP) TOOL HUB
                   </h2>
                   <p style={{ ...mono, color: 'rgba(168,85,247,0.6)', fontSize: '10px', marginTop: 2 }}>
-                    QUẢN LÝ CÔNG CỤ NGOẠI VI & MÁY CHỦ MCP CHO CAT AI
+                    QUẢN LÝ CÔNG CỤ NGOẠI VI & MÁY CHỦ MCP CHO THƯ KÝ KIM
                   </p>
                 </div>
               </div>

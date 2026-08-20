@@ -65,32 +65,32 @@ export function TopBar() {
         boxShadow: '0 0 30px rgba(0, 245, 255, 0.05), 0 1px 0 rgba(0,245,255,0.08)',
       }}
     >
-      {/* Logo CAT AI */}
+      {/* Logo Thư Ký Kim */}
       <div className="flex items-center gap-3 flex-shrink-0">
         <motion.div
           animate={{ rotate: 360 }}
           transition={{ duration: 10, repeat: Infinity, ease: 'linear' }}
           className="w-8 h-8 rounded-full flex items-center justify-center relative"
           style={{
-            border: '1.5px solid rgba(0,245,255,0.6)',
-            boxShadow: '0 0 12px rgba(0,245,255,0.4), inset 0 0 8px rgba(0,245,255,0.1)',
+            border: '1.5px solid rgba(168,85,247,0.6)',
+            boxShadow: '0 0 12px rgba(168,85,247,0.4), inset 0 0 8px rgba(168,85,247,0.1)',
           }}
         >
           <div
             className="w-2.5 h-2.5 rounded-full"
-            style={{ background: '#00f5ff', boxShadow: '0 0 8px rgba(0,245,255,0.9)' }}
+            style={{ background: '#a855f7', boxShadow: '0 0 8px rgba(168,85,247,0.9)' }}
           />
           <div
             className="absolute inset-0 rounded-full"
-            style={{ border: '1px dashed rgba(0,245,255,0.2)' }}
+            style={{ border: '1px dashed rgba(168,85,247,0.3)' }}
           />
         </motion.div>
         <div>
           <div style={{ ...orb, color: '#00f5ff', fontSize: '13px', letterSpacing: '0.18em', textShadow: '0 0 10px rgba(0,245,255,0.6)' }}>
-            CAT AI
+            THƯ KÝ KIM
           </div>
-          <div style={{ ...mono, color: 'rgba(0,245,255,0.45)', fontSize: '10px' }}>
-            HOLOGRAPHIC OS v3.8
+          <div style={{ ...mono, color: 'rgba(168,85,247,0.65)', fontSize: '10px' }}>
+            HOLOGRAPHIC ASSISTANT v3.8
           </div>
         </div>
       </div>
@@ -180,7 +180,7 @@ export function TopBar() {
           )}
         </motion.button>
 
-        {/* Deep Male Voice Auto-Speak Toggle */}
+        {/* Cute Female Voice Auto-Speak Toggle */}
         <motion.button
           whileHover={{ scale: 1.15 }}
           whileTap={{ scale: 0.9 }}
@@ -192,28 +192,28 @@ export function TopBar() {
               setVoiceAutoSpeak(!voiceAutoSpeak);
               addNotification({
                 type: 'info',
-                title: 'Giọng đọc Nam Trầm CAT AI',
-                message: !voiceAutoSpeak ? 'Đã bật tự động đọc phản hồi (Giọng Nam Trầm).' : 'Đã tắt tự động đọc.',
+                title: 'Giọng đọc Nữ Dễ Thương (Thư Ký Kim)',
+                message: !voiceAutoSpeak ? 'Đã bật tự động đọc phản hồi (Giọng Nữ Dễ Thương).' : 'Đã tắt tự động đọc.',
               });
             }
           }}
           className="w-8 h-8 rounded-lg flex items-center justify-center cursor-pointer relative"
           style={{
-            background: isSpeaking ? 'rgba(168,85,247,0.25)' : voiceAutoSpeak ? 'rgba(168,85,247,0.1)' : 'rgba(255,255,255,0.04)',
-            border: `1px solid ${isSpeaking ? '#a855f7' : voiceAutoSpeak ? 'rgba(168,85,247,0.4)' : 'rgba(255,255,255,0.15)'}`,
-            boxShadow: isSpeaking ? '0 0 15px rgba(168,85,247,0.5)' : 'none',
+            background: isSpeaking ? 'rgba(236,72,153,0.25)' : voiceAutoSpeak ? 'rgba(236,72,153,0.1)' : 'rgba(255,255,255,0.04)',
+            border: `1px solid ${isSpeaking ? '#ec4899' : voiceAutoSpeak ? 'rgba(236,72,153,0.4)' : 'rgba(255,255,255,0.15)'}`,
+            boxShadow: isSpeaking ? '0 0 15px rgba(236,72,153,0.5)' : 'none',
           }}
-          title={isSpeaking ? 'Nhấn để dừng đọc' : voiceAutoSpeak ? 'Tắt tự động đọc giọng nam' : 'Bật tự động đọc giọng nam'}
+          title={isSpeaking ? 'Nhấn để dừng đọc' : voiceAutoSpeak ? 'Tắt tự động đọc giọng nữ Thư Ký Kim' : 'Bật tự động đọc giọng nữ Thư Ký Kim'}
         >
           {isSpeaking ? (
             <motion.div animate={{ scale: [1, 1.25, 1] }} transition={{ duration: 0.6, repeat: Infinity }}>
-              <Volume2 className="w-4 h-4 text-purple-300" />
+              <Volume2 className="w-4 h-4 text-pink-300" />
             </motion.div>
           ) : (
-            <Bot className={`w-4 h-4 ${voiceAutoSpeak ? 'text-purple-400' : 'text-gray-400'}`} />
+            <Bot className={`w-4 h-4 ${voiceAutoSpeak ? 'text-pink-400' : 'text-gray-400'}`} />
           )}
           {isSpeaking && (
-            <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-purple-400 animate-ping" />
+            <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-pink-400 animate-ping" />
           )}
         </motion.button>
 
@@ -252,7 +252,7 @@ export function TopBar() {
             icon: Bell,
             action: () => {
               sounds.playClick();
-              addNotification({ type: 'info', title: 'Thông báo CAT AI', message: 'Tất cả các dịch vụ đang hoạt động bình thường.' });
+              addNotification({ type: 'info', title: 'Thông báo Thư Ký Kim', message: 'Tất cả các dịch vụ đang hoạt động bình thường.' });
             },
             color: '#f59e0b',
             title: 'Thông báo',
