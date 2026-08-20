@@ -1,4 +1,4 @@
-export type AIProvider = 'openai' | 'openrouter' | 'groq' | 'deepseek' | 'ollama' | 'custom';
+export type AIProvider = 'xkiro' | 'openai' | 'openrouter' | 'groq' | 'deepseek' | 'ollama' | 'custom';
 
 export interface AIConfig {
   provider: AIProvider;
@@ -22,6 +22,23 @@ export interface ProviderPreset {
 }
 
 export const PROVIDER_PRESETS: Record<AIProvider, ProviderPreset> = {
+  xkiro: {
+    id: 'xkiro',
+    name: 'Xkiro AI',
+    defaultBaseUrl: 'https://api.xkiro.com/v1',
+    defaultModel: 'Gwen 3.8 max',
+    suggestedModels: [
+      'Gwen 3.8 max',
+      'qwen-3.8-max',
+      'qwen-plus',
+      'qwen-max',
+      'qwen-turbo',
+      'gpt-4o',
+      'deepseek-chat',
+    ],
+    requiresKey: true,
+    docUrl: 'https://api.xkiro.com',
+  },
   openai: {
     id: 'openai',
     name: 'OpenAI',
@@ -80,10 +97,10 @@ export const PROVIDER_PRESETS: Record<AIProvider, ProviderPreset> = {
   },
   custom: {
     id: 'custom',
-    name: 'Custom OpenAI-Compatible',
-    defaultBaseUrl: 'https://your-custom-endpoint.com/v1',
-    defaultModel: 'custom-model',
-    suggestedModels: ['custom-model', 'gpt-4o', 'deepseek-chat'],
+    name: 'Custom Endpoint',
+    defaultBaseUrl: 'https://api.xkiro.com/v1',
+    defaultModel: 'Gwen 3.8 max',
+    suggestedModels: ['Gwen 3.8 max', 'custom-model', 'gpt-4o', 'deepseek-chat'],
     requiresKey: true,
     docUrl: '',
   },
@@ -94,15 +111,24 @@ const DEFAULT_SYSTEM_PROMPT =
 
 const STORAGE_KEY = 'cat_ai_config_v1';
 
+// Read from Vite environment variables (supports Cloudflare Pages build/runtime env)
+const envProvider = ((import.meta.env.VITE_AI_PROVIDER as string) || 'xkiro') as AIProvider;
+const envBaseUrl = import.meta.env.VITE_AI_BASE_URL || 'https://api.xkiro.com/v1';
+const envApiKey = import.meta.env.VITE_AI_API_KEY || '';
+const envModel = import.meta.env.VITE_AI_MODEL || 'Gwen 3.8 max';
+const envTemp = import.meta.env.VITE_AI_TEMPERATURE ? parseFloat(import.meta.env.VITE_AI_TEMPERATURE) : 0.7;
+const envTokens = import.meta.env.VITE_AI_MAX_TOKENS ? parseInt(import.meta.env.VITE_AI_MAX_TOKENS, 10) : 2048;
+const envStreaming = import.meta.env.VITE_AI_STREAMING !== 'false';
+
 export const DEFAULT_AI_CONFIG: AIConfig = {
-  provider: 'openai',
-  baseUrl: 'https://api.openai.com/v1',
-  apiKey: '',
-  model: 'gpt-4o',
-  temperature: 0.7,
-  maxTokens: 2048,
+  provider: PROVIDER_PRESETS[envProvider] ? envProvider : 'xkiro',
+  baseUrl: envBaseUrl,
+  apiKey: envApiKey,
+  model: envModel,
+  temperature: isNaN(envTemp) ? 0.7 : envTemp,
+  maxTokens: isNaN(envTokens) ? 2048 : envTokens,
   systemPrompt: DEFAULT_SYSTEM_PROMPT,
-  streaming: true,
+  streaming: envStreaming,
 };
 
 export function getStoredAIConfig(): AIConfig {
@@ -110,7 +136,14 @@ export function getStoredAIConfig(): AIConfig {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return DEFAULT_AI_CONFIG;
     const parsed = JSON.parse(raw);
-    return { ...DEFAULT_AI_CONFIG, ...parsed };
+    return {
+      ...DEFAULT_AI_CONFIG,
+      ...parsed,
+      // If localStorage has empty apiKey but env has one, fallback to env
+      apiKey: parsed.apiKey || envApiKey,
+      baseUrl: parsed.baseUrl || envBaseUrl,
+      model: parsed.model || envModel,
+    };
   } catch {
     return DEFAULT_AI_CONFIG;
   }
@@ -211,7 +244,7 @@ export async function callOpenAIChatCompletion({
 
       for (const line of lines) {
         const trimmed = line.trim();
-        if (!trimmed || trimmed.startsWith(':')) continue; // comments or empty
+        if (!trimmed || trimmed.startsWith(':')) continue;
         if (trimmed === 'data: [DONE]') continue;
 
         if (trimmed.startsWith('data: ')) {
@@ -259,7 +292,7 @@ export async function testAIConnection(
     return {
       success: true,
       latencyMs: latency,
-      message: `Connection successful! Response: "${reply.trim()}"`,
+      message: `Connection verified! Response: "${reply.trim()}"`,
       modelUsed: config.model,
     };
   } catch (err: any) {
