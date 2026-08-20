@@ -1,12 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
-import { Wifi, Shield, Cpu, Settings, Grid, Hand, Bell, Activity, Volume2, VolumeX } from 'lucide-react';
+import {
+  Wifi, Shield, Cpu, Settings, Grid, Hand, Bell,
+  Activity, Volume2, VolumeX, FileText, Wrench, User
+} from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { sounds } from '../services/sound';
 
 const orb = { fontFamily: 'Orbitron, sans-serif' };
 const mono = { fontFamily: 'Share Tech Mono, monospace' };
-const raj = { fontFamily: 'Rajdhani, sans-serif' };
+const aptos = { fontFamily: "'Aptos Narrow', 'Aptos', sans-serif" };
 
 export function TopBar() {
   const [time, setTime] = useState(new Date());
@@ -14,10 +17,14 @@ export function TopBar() {
     setSettingsOpen,
     setAppGridOpen,
     setGestureOpen,
+    setFilesOpen,
+    setMcpOpen,
     aiState,
     addNotification,
     soundEnabled,
     setSoundEnabled,
+    userFullName,
+    userName,
   } = useApp();
 
   useEffect(() => {
@@ -25,9 +32,9 @@ export function TopBar() {
     return () => clearInterval(interval);
   }, []);
 
-  const fmtTime = (d: Date) => d.toLocaleTimeString('en-US', { hour12: false });
+  const fmtTime = (d: Date) => d.toLocaleTimeString('vi-VN', { hour12: false });
   const fmtDate = (d: Date) =>
-    d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
+    d.toLocaleDateString('vi-VN', { weekday: 'short', month: 'numeric', day: 'numeric', year: 'numeric' });
 
   const stateColor = {
     idle: '#00f5ff',
@@ -37,10 +44,10 @@ export function TopBar() {
   }[aiState];
 
   const stateLabel = {
-    idle: 'STANDBY',
-    listening: 'LISTENING',
-    processing: 'PROCESSING',
-    responding: 'RESPONDING',
+    idle: 'CHỜ LỆNH',
+    listening: 'LẮNG NGHE',
+    processing: 'ĐANG XỬ LÝ',
+    responding: 'PHẢN HỒI',
   }[aiState];
 
   return (
@@ -48,13 +55,13 @@ export function TopBar() {
       className="fixed top-0 left-0 right-0 h-14 flex items-center px-5 gap-4"
       style={{
         zIndex: 100,
-        background: 'rgba(1, 11, 26, 0.85)',
+        background: 'rgba(1, 11, 26, 0.88)',
         backdropFilter: 'blur(20px)',
         borderBottom: '1px solid rgba(0, 245, 255, 0.15)',
-        boxShadow: '0 0 30px rgba(0, 245, 255, 0.04), 0 1px 0 rgba(0,245,255,0.08)',
+        boxShadow: '0 0 30px rgba(0, 245, 255, 0.05), 0 1px 0 rgba(0,245,255,0.08)',
       }}
     >
-      {/* Logo */}
+      {/* Logo CAT AI */}
       <div className="flex items-center gap-3 flex-shrink-0">
         <motion.div
           animate={{ rotate: 360 }}
@@ -75,10 +82,12 @@ export function TopBar() {
           />
         </motion.div>
         <div>
-          <div style={{ ...orb, color: '#00f5ff', fontSize: '13px', letterSpacing: '0.15em', textShadow: '0 0 10px rgba(0,245,255,0.6)' }}>
-            NEXUS AI
+          <div style={{ ...orb, color: '#00f5ff', fontSize: '13px', letterSpacing: '0.18em', textShadow: '0 0 10px rgba(0,245,255,0.6)' }}>
+            CAT AI
           </div>
-          <div style={{ ...mono, color: 'rgba(0,245,255,0.45)', fontSize: '10px' }}>OS v3.7.2 — ALPHA</div>
+          <div style={{ ...mono, color: 'rgba(0,245,255,0.45)', fontSize: '10px' }}>
+            HOLOGRAPHIC OS v3.8
+          </div>
         </div>
       </div>
 
@@ -98,13 +107,27 @@ export function TopBar() {
         </span>
       </div>
 
+      {/* User Badge: Vinh (Vinh_Admin) */}
+      <div
+        className="hidden md:flex items-center gap-2 px-3 py-1 rounded-full flex-shrink-0"
+        style={{ background: 'rgba(168,85,247,0.1)', border: '1px solid rgba(168,85,247,0.25)' }}
+      >
+        <User className="w-3 h-3 text-purple-400" />
+        <span style={{ ...aptos, color: '#e9d5ff', fontSize: '11px', fontWeight: 600 }}>
+          {userFullName}
+        </span>
+        <span style={{ ...mono, color: 'rgba(168,85,247,0.7)', fontSize: '9px' }}>
+          ({userName})
+        </span>
+      </div>
+
       {/* Center status row */}
       <div className="flex-1 flex items-center justify-center gap-6">
         {[
-          { icon: Wifi, label: 'ONLINE', val: '99.9%', color: '#22c55e' },
-          { icon: Shield, label: 'SECURE', val: 'AES-256', color: '#00f5ff' },
-          { icon: Cpu, label: 'LOAD', val: '42%', color: '#a855f7' },
-          { icon: Activity, label: 'NET', val: '1.2GB/s', color: '#0ea5e9' },
+          { icon: Wifi, label: 'GATEWAY', val: 'XKIRO V1', color: '#22c55e' },
+          { icon: Shield, label: 'BẢO MẬT', val: 'AES-256', color: '#00f5ff' },
+          { icon: Cpu, label: 'MODEL', val: 'GWEN 3.8', color: '#a855f7' },
+          { icon: Activity, label: 'MCP', val: '6 TOOLS', color: '#0ea5e9' },
         ].map(({ icon: Icon, label, val, color }) => (
           <div key={label} className="flex items-center gap-1.5">
             <Icon className="w-3 h-3" style={{ color }} />
@@ -119,13 +142,13 @@ export function TopBar() {
         <div style={{ ...orb, color: '#00f5ff', fontSize: '15px', textShadow: '0 0 10px rgba(0,245,255,0.5)' }}>
           {fmtTime(time)}
         </div>
-        <div style={{ ...raj, color: 'rgba(0,245,255,0.5)', fontSize: '10px' }}>{fmtDate(time)}</div>
+        <div style={{ ...aptos, color: 'rgba(0,245,255,0.5)', fontSize: '11px' }}>{fmtDate(time)}</div>
       </div>
 
       {/* Divider */}
       <div className="w-px h-8 flex-shrink-0" style={{ background: 'rgba(0,245,255,0.12)' }} />
 
-      {/* Quick actions */}
+      {/* Quick action buttons */}
       <div className="flex items-center gap-2 flex-shrink-0">
         {/* Sound Toggle */}
         <motion.button
@@ -135,8 +158,8 @@ export function TopBar() {
             setSoundEnabled(!soundEnabled);
             addNotification({
               type: 'info',
-              title: 'Sound System',
-              message: !soundEnabled ? 'Sci-Fi sound effects enabled.' : 'Sound effects muted.',
+              title: 'Âm thanh hệ thống',
+              message: !soundEnabled ? 'Đã bật hiệu ứng âm thanh Sci-Fi.' : 'Đã tắt tiếng.',
             });
           }}
           className="w-8 h-8 rounded-lg flex items-center justify-center cursor-pointer"
@@ -144,7 +167,7 @@ export function TopBar() {
             background: soundEnabled ? 'rgba(0,245,255,0.1)' : 'rgba(255,255,255,0.04)',
             border: `1px solid ${soundEnabled ? 'rgba(0,245,255,0.4)' : 'rgba(255,255,255,0.15)'}`,
           }}
-          title={soundEnabled ? 'Mute Sound' : 'Enable Sound'}
+          title={soundEnabled ? 'Tắt âm thanh' : 'Bật âm thanh'}
         >
           {soundEnabled ? (
             <Volume2 className="w-4 h-4 text-cyan-400" />
@@ -153,14 +176,45 @@ export function TopBar() {
           )}
         </motion.button>
 
+        {/* Files Systemizer Button */}
+        <motion.button
+          whileHover={{ scale: 1.15 }}
+          whileTap={{ scale: 0.9 }}
+          onClick={() => {
+            sounds.playClick();
+            setFilesOpen(true);
+          }}
+          className="w-8 h-8 rounded-lg flex items-center justify-center cursor-pointer"
+          style={{ background: 'rgba(0,245,255,0.06)', border: '1px solid rgba(0,245,255,0.2)' }}
+          title="Hệ thống hóa Tài liệu"
+        >
+          <FileText className="w-4 h-4 text-cyan-400" />
+        </motion.button>
+
+        {/* MCP Tools Hub Button */}
+        <motion.button
+          whileHover={{ scale: 1.15 }}
+          whileTap={{ scale: 0.9 }}
+          onClick={() => {
+            sounds.playClick();
+            setMcpOpen(true);
+          }}
+          className="w-8 h-8 rounded-lg flex items-center justify-center cursor-pointer"
+          style={{ background: 'rgba(168,85,247,0.08)', border: '1px solid rgba(168,85,247,0.3)' }}
+          title="Công cụ MCP (Model Context Protocol)"
+        >
+          <Wrench className="w-4 h-4 text-purple-400" />
+        </motion.button>
+
         {[
           {
             icon: Bell,
             action: () => {
               sounds.playClick();
-              addNotification({ type: 'info', title: 'System Alert', message: 'All systems nominal. No anomalies detected.' });
+              addNotification({ type: 'info', title: 'Thông báo CAT AI', message: 'Tất cả các dịch vụ đang hoạt động bình thường.' });
             },
             color: '#f59e0b',
+            title: 'Thông báo',
           },
           {
             icon: Hand,
@@ -169,6 +223,7 @@ export function TopBar() {
               setGestureOpen(true);
             },
             color: '#00f5ff',
+            title: 'Điều khiển Cử chỉ',
           },
           {
             icon: Grid,
@@ -177,6 +232,7 @@ export function TopBar() {
               setAppGridOpen(true);
             },
             color: '#00f5ff',
+            title: 'Tất cả ứng dụng',
           },
           {
             icon: Settings,
@@ -185,13 +241,15 @@ export function TopBar() {
               setSettingsOpen(true);
             },
             color: '#00f5ff',
+            title: 'Cài đặt hệ thống',
           },
-        ].map(({ icon: Icon, action, color }, i) => (
+        ].map(({ icon: Icon, action, color, title }, i) => (
           <motion.button
             key={i}
             whileHover={{ scale: 1.15 }}
             whileTap={{ scale: 0.9 }}
             onClick={action}
+            title={title}
             className="w-8 h-8 rounded-lg flex items-center justify-center cursor-pointer"
             style={{
               background: 'rgba(0,245,255,0.04)',

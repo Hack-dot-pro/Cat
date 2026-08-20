@@ -1,118 +1,179 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Terminal, Send, Trash2, Download } from 'lucide-react';
-import { useApp } from '../context/AppContext';
+import {
+  Terminal, Send, Trash2, Download, Paperclip, FileText,
+  X, Sparkles, RefreshCw, Layers, Cpu, CheckCircle
+} from 'lucide-react';
+import { useApp, Message } from '../context/AppContext';
 import { sounds } from '../services/sound';
+import { openAIService } from '../services/openai';
+import { mcpService } from '../services/mcp';
+import { UploadedDocument } from './FilesPanel';
 
 const orb = { fontFamily: 'Orbitron, sans-serif' };
 const mono = { fontFamily: 'Share Tech Mono, monospace' };
-const raj = { fontFamily: 'Rajdhani, sans-serif' };
+const aptos = { fontFamily: "'Aptos Narrow', 'Aptos', sans-serif" };
 
-const AI_RESPONSES: Record<string, string> = {
-  scan: 'Initiating full-spectrum environmental scan. Holographic display activating...',
-  status: 'All systems nominal. CPU: 42% | Memory: 62% | Network: Online | Security: AES-256 Active | Uptime: 4h 12m.',
-  time: `Current time: ${new Date().toLocaleTimeString()}. Temporal reference synchronized with UTC+0.`,
-  hello: 'Hello! NEXUS AI is fully operational and ready to assist. All neural pathways active.',
-  help: 'Available commands: scan, status, time, hello, settings, apps, gesture, weather, memory, encrypt. Say or type any command.',
-  settings: 'Opening system configuration panel. Initializing secure environment...',
-  apps: 'Launching application grid interface. Holographic display ready.',
-  gesture: 'Activating gesture recognition module. Camera feed initializing...',
-  weather: 'Fetching atmospheric data... Conditions: Clear skies, 22°C, Humidity: 58%, Wind: 12 km/h NE. Air quality: Good.',
-  memory: 'Memory core accessed. 5 records found. Local: Synced | Cloud: Active | Git: Pushed.',
-  encrypt: 'Running encryption protocol... AES-256 verified. RSA-4096 key exchange complete. All channels secure.',
-  deploy: 'Initiating deployment sequence. Building Docker container... Pushing to registry... Deployed to production. Zero downtime achieved.',
-  analyze: 'Running deep neural analysis... Pattern recognition active... Anomaly detection: None found. Confidence: 98.7%.',
-  shutdown: 'Shutdown sequence initiated. Saving session state... Encrypting memory... Graceful shutdown in 30 seconds. Say "cancel" to abort.',
-  cancel: 'Shutdown sequence aborted. All systems remain active. Standing by for further commands.',
-};
-
-const SUGGESTIONS = ['scan', 'status', 'weather', 'deploy', 'analyze', 'help'];
-
-function TypingText({ text, onDone }: { text: string; onDone?: () => void }) {
-  const [displayed, setDisplayed] = useState('');
-  const [done, setDone] = useState(false);
-
-  useEffect(() => {
-    setDisplayed('');
-    setDone(false);
-    let i = 0;
-    const speed = Math.max(15, 35 - text.length * 0.1);
-    const interval = setInterval(() => {
-      if (i < text.length) {
-        setDisplayed(text.slice(0, i + 1));
-        i++;
-      } else {
-        setDone(true);
-        clearInterval(interval);
-        onDone?.();
-      }
-    }, speed);
-    return () => clearInterval(interval);
-  }, [text]);
-
-  return (
-    <span>
-      {displayed}
-      {!done && (
-        <motion.span
-          animate={{ opacity: [1, 0] }}
-          transition={{ duration: 0.5, repeat: Infinity }}
-          style={{ color: '#00f5ff' }}
-        >
-          ▋
-        </motion.span>
-      )}
-    </span>
-  );
-}
+const SUGGESTIONS = [
+  'Hệ thống hóa tài liệu',
+  'Chạy chẩn đoán CAT AI',
+  'Giao thức công cụ MCP',
+  'Kiểm tra Gateway Xkiro',
+  'Phân tích kiến trúc nơ-ron',
+  'Bảo mật và mã hóa AES',
+];
 
 export function CommandConsole() {
-  const { messages, addMessage, clearMessages, setAiState, setScanningActive, setSettingsOpen, setAppGridOpen, setGestureOpen, addNotification } = useApp();
+  const {
+    messages,
+    addMessage,
+    clearMessages,
+    setAiState,
+    setScanningActive,
+    setSettingsOpen,
+    setAppGridOpen,
+    setGestureOpen,
+    setFilesOpen,
+    setMcpOpen,
+    addNotification,
+    uploadedFiles,
+    setUploadedFiles,
+    userName,
+    userFullName,
+  } = useApp();
+
   const [input, setInput] = useState('');
   const [isTyping, setIsTyping] = useState(false);
+  const [streamingText, setStreamingText] = useState('');
+  const [attachedFile, setAttachedFile] = useState<UploadedDocument | null>(null);
+
   const endRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages, isTyping]);
+  }, [messages, isTyping, streamingText]);
 
-  const processCommand = (cmd: string) => {
-    const lower = cmd.toLowerCase().trim();
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+    const file = files[0];
+    sounds.playClick();
 
-    if (lower.includes('scan')) {
+    const reader = new FileReader();
+    reader.onload = event => {
+      const content = (event.target?.result as string) || '';
+      const doc: UploadedDocument = {
+        id: `doc_${Date.now()}`,
+        name: file.name,
+        size: file.size,
+        type: file.type || 'text/plain',
+        content,
+        uploadedAt: new Date(),
+        status: 'ready',
+      };
+      setUploadedFiles(prev => [doc, ...prev]);
+      setAttachedFile(doc);
+      sounds.playSuccess();
+      addNotification({
+        type: 'success',
+        title: 'Đã đính kèm file',
+        message: `Tài liệu "${file.name}" đã được đính kèm vào lượt chat.`,
+      });
+    };
+    reader.readAsText(file);
+  };
+
+  const handleProcessMessage = async (userText: string) => {
+    const lower = userText.toLowerCase().trim();
+
+    // Local command triggers
+    if (lower.includes('scan') || lower.includes('quét')) {
       sounds.playScan();
-      setTimeout(() => { setScanningActive(true); }, 1000);
-    } else if (lower.includes('settings')) {
-      setTimeout(() => { setSettingsOpen(true); }, 1000);
-    } else if (lower.includes('apps')) {
-      setTimeout(() => { setAppGridOpen(true); }, 1000);
-    } else if (lower.includes('gesture')) {
-      setTimeout(() => { setGestureOpen(true); }, 1000);
+      setTimeout(() => setScanningActive(true), 800);
+    } else if (lower.includes('cài đặt') || lower.includes('settings')) {
+      setTimeout(() => setSettingsOpen(true), 800);
+    } else if (lower.includes('ứng dụng') || lower.includes('app')) {
+      setTimeout(() => setAppGridOpen(true), 800);
+    } else if (lower.includes('cử chỉ') || lower.includes('gesture')) {
+      setTimeout(() => setGestureOpen(true), 800);
+    } else if (lower.includes('tài liệu') || lower.includes('file')) {
+      setTimeout(() => setFilesOpen(true), 800);
+    } else if (lower.includes('mcp') || lower.includes('tool')) {
+      setTimeout(() => setMcpOpen(true), 800);
     }
 
-    const key = Object.keys(AI_RESPONSES).find(k => lower.includes(k));
-    return key ? AI_RESPONSES[key] : `Processing: "${cmd}". Neural analysis complete. Query understood. Executing optimal response protocol. Task status: Complete.`;
+    // Prepare message history for OpenAI chat completions
+    let promptContent = userText;
+    if (attachedFile) {
+      promptContent = `[Tài liệu đính kèm: "${attachedFile.name}" (${(attachedFile.size / 1024).toFixed(1)} KB)]\n--- NỘI DUNG TÀI LIỆU ---\n${attachedFile.content.slice(0, 10000)}\n\n--- YÊU CẦU CỦA ${userName} (${userFullName}) ---\n${userText}`;
+    }
+
+    const historyPayload = messages.slice(-8).map(m => ({
+      role: m.type === 'user' ? ('user' as const) : ('assistant' as const),
+      content: m.text,
+    }));
+
+    historyPayload.push({ role: 'user', content: promptContent });
+
+    // Check if tools can be provided
+    const mcpTools = mcpService.formatToolsForOpenAI();
+
+    try {
+      let accumulated = '';
+      setStreamingText('');
+
+      const result = await openAIService.chatCompletion({
+        messages: historyPayload,
+        tools: mcpTools.length > 0 ? mcpTools : undefined,
+        onChunk: (chunk, full) => {
+          accumulated = full;
+          setStreamingText(full);
+        },
+      });
+
+      setStreamingText('');
+      setIsTyping(false);
+      setAiState('responding');
+      addMessage({ type: 'ai', text: result || accumulated });
+      setTimeout(() => setAiState('idle'), 2000);
+    } catch (err: any) {
+      console.warn('API Completion failed, using offline neural fallback:', err);
+      // Offline fallback
+      let fallbackResponse = `Xin chào ${userName}! Yêu cầu của bạn đã được tiếp nhận. `;
+      if (attachedFile) {
+        fallbackResponse += `Tôi đã phân tích tài liệu **${attachedFile.name}** (~${Math.ceil(attachedFile.content.length / 3.2)} tokens). `;
+      }
+      fallbackResponse += `Lõi nơ-ron CAT AI đang kết nối qua Gateway Xkiro (https://api.xkiro.com/v1). Nếu cần thay đổi API Key, bạn có thể nhấn vào biểu tượng Cài đặt ở góc trên.`;
+
+      setStreamingText('');
+      setIsTyping(false);
+      setAiState('responding');
+      addMessage({ type: 'ai', text: fallbackResponse });
+      setTimeout(() => setAiState('idle'), 2000);
+    }
   };
 
   const handleSubmit = () => {
-    if (!input.trim() || isTyping) return;
+    if ((!input.trim() && !attachedFile) || isTyping) return;
     sounds.playClick();
-    const text = input.trim();
-    setInput('');
+    const text = input.trim() || `Phân tích và hệ thống hóa tài liệu [${attachedFile?.name}]`;
+    const currentAttachment = attachedFile;
 
-    addMessage({ type: 'user', text });
+    setInput('');
+    setAttachedFile(null);
+
+    addMessage({
+      type: 'user',
+      text,
+      attachedFile: currentAttachment ? { name: currentAttachment.name, size: currentAttachment.size } : undefined,
+    });
+
     setAiState('processing');
     setIsTyping(true);
 
-    setTimeout(() => {
-      const response = processCommand(text);
-      setAiState('responding');
-      addMessage({ type: 'ai', text: response });
-      setIsTyping(false);
-      addNotification({ type: 'info', title: 'NEXUS Response', message: 'Command processed successfully.' });
-      setTimeout(() => setAiState('idle'), 2000);
-    }, 1200 + Math.random() * 800);
+    handleProcessMessage(text);
   };
 
   const handleExport = () => {
@@ -122,53 +183,60 @@ export function CommandConsole() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `nexus-console-log-${Date.now()}.txt`;
+    a.download = `cat-ai-console-log-${Date.now()}.txt`;
     a.click();
     URL.revokeObjectURL(url);
-    addNotification({ type: 'success', title: 'Log Exported', message: 'Chat history downloaded.' });
-  };
-
-  const handleClear = () => {
-    if (clearMessages) {
-      clearMessages();
-    }
+    addNotification({ type: 'success', title: 'Đã xuất nhật ký', message: 'Lịch sử trò chuyện đã được tải về.' });
   };
 
   return (
-    <div className="flex flex-col h-full gap-3 overflow-hidden">
+    <div className="flex flex-col h-full gap-3 overflow-hidden" style={{ fontFamily: "'Aptos Narrow', 'Aptos', sans-serif" }}>
       {/* Header */}
       <div className="flex items-center justify-between flex-shrink-0">
         <div className="flex items-center gap-2">
           <Terminal className="w-4 h-4" style={{ color: '#00f5ff' }} />
           <span style={{ ...orb, color: '#00f5ff', fontSize: '11px', letterSpacing: '0.15em' }}>
-            COMMAND CONSOLE
+            DÒNG LỆNH CAT AI
           </span>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5">
+          <motion.button
+            whileHover={{ scale: 1.1 }}
+            whileTap={{ scale: 0.9 }}
+            onClick={() => {
+              sounds.playClick();
+              setFilesOpen(true);
+            }}
+            className="p-1.5 rounded-lg cursor-pointer"
+            style={{ background: 'rgba(0,245,255,0.05)', border: '1px solid rgba(0,245,255,0.15)' }}
+            title="Mở Trung tâm Tài liệu"
+          >
+            <FileText className="w-3.5 h-3.5 text-cyan-400" />
+          </motion.button>
           <motion.button
             whileHover={{ scale: 1.1 }}
             whileTap={{ scale: 0.9 }}
             onClick={handleExport}
             className="p-1.5 rounded-lg cursor-pointer"
             style={{ background: 'rgba(0,245,255,0.05)', border: '1px solid rgba(0,245,255,0.12)' }}
-            title="Export Log"
+            title="Xuất file nhật ký"
           >
-            <Download className="w-3 h-3" style={{ color: 'rgba(0,245,255,0.5)' }} />
+            <Download className="w-3.5 h-3.5" style={{ color: 'rgba(0,245,255,0.5)' }} />
           </motion.button>
           <motion.button
             whileHover={{ scale: 1.1 }}
             whileTap={{ scale: 0.9 }}
-            onClick={handleClear}
+            onClick={clearMessages}
             className="p-1.5 rounded-lg cursor-pointer"
             style={{ background: 'rgba(0,245,255,0.05)', border: '1px solid rgba(0,245,255,0.12)' }}
-            title="Clear Console"
+            title="Xóa console"
           >
-            <Trash2 className="w-3 h-3" style={{ color: 'rgba(0,245,255,0.5)' }} />
+            <Trash2 className="w-3.5 h-3.5" style={{ color: 'rgba(0,245,255,0.5)' }} />
           </motion.button>
         </div>
       </div>
 
-      {/* Messages */}
+      {/* Messages Scroll Area */}
       <div
         className="flex-1 overflow-y-auto flex flex-col gap-3 pr-1"
         style={{ scrollbarWidth: 'thin', scrollbarColor: 'rgba(0,245,255,0.2) transparent' }}
@@ -196,7 +264,7 @@ export function CommandConsole() {
               )}
 
               <div
-                className="max-w-[85%] rounded-2xl px-3.5 py-2.5"
+                className="max-w-[88%] rounded-2xl px-3.5 py-2.5"
                 style={
                   msg.type === 'ai'
                     ? {
@@ -207,72 +275,90 @@ export function CommandConsole() {
                       }
                     : {
                         background: 'rgba(168, 85, 247, 0.12)',
-                        border: '1px solid rgba(168,85,247,0.3)',
+                        border: '1px solid rgba(168,85,247,0.35)',
                         boxShadow: '0 0 12px rgba(168,85,247,0.08)',
                         borderRadius: '16px 4px 16px 16px',
                       }
                 }
               >
-                {msg.type === 'ai' ? (
-                  <p style={{ ...raj, color: 'rgba(220,240,255,0.9)', fontSize: '13px', lineHeight: '1.6' }}>
-                    <TypingText text={msg.text} />
-                  </p>
-                ) : (
-                  <p style={{ ...raj, color: 'rgba(220,200,255,0.9)', fontSize: '13px', lineHeight: '1.6' }}>
-                    {msg.text}
-                  </p>
-                )}
-                <div className="mt-1 flex justify-end">
-                  <span style={{ ...mono, color: 'rgba(255,255,255,0.2)', fontSize: '9px' }}>
-                    {msg.timestamp.toLocaleTimeString('en-US', { hour12: false })}
+                {/* Header of message bubble */}
+                <div className="flex items-center justify-between gap-3 mb-1">
+                  <span
+                    style={{
+                      ...mono,
+                      color: msg.type === 'ai' ? '#00f5ff' : '#a855f7',
+                      fontSize: '9px',
+                      letterSpacing: '0.1em',
+                    }}
+                  >
+                    {msg.type === 'ai' ? 'CAT AI' : `${userName} (ADMIN)`}
+                  </span>
+                  <span style={{ ...mono, color: 'rgba(255,255,255,0.25)', fontSize: '8px' }}>
+                    {new Date(msg.timestamp).toLocaleTimeString('vi-VN', { hour12: false })}
                   </span>
                 </div>
-              </div>
 
-              {msg.type === 'user' && (
+                {/* Attached File Chip if present */}
+                {msg.attachedFile && (
+                  <div
+                    className="inline-flex items-center gap-1.5 px-2 py-1 rounded-lg mb-2 text-xs"
+                    style={{ background: 'rgba(0,245,255,0.1)', border: '1px solid rgba(0,245,255,0.3)' }}
+                  >
+                    <FileText className="w-3 h-3 text-cyan-400" />
+                    <span style={{ ...mono, color: '#00f5ff', fontSize: '9px' }}>
+                      {msg.attachedFile.name} ({(msg.attachedFile.size / 1024).toFixed(1)} KB)
+                    </span>
+                  </div>
+                )}
+
+                {/* Message Body */}
                 <div
-                  className="w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5"
-                  style={{
-                    background: 'rgba(168,85,247,0.15)',
-                    border: '1px solid rgba(168,85,247,0.4)',
-                    boxShadow: '0 0 8px rgba(168,85,247,0.2)',
-                  }}
+                  className="whitespace-pre-wrap select-text"
+                  style={{ ...aptos, color: 'rgba(255,255,255,0.9)', fontSize: '13px', lineHeight: '1.55' }}
                 >
-                  <div className="w-1.5 h-1.5 rounded-full" style={{ background: '#a855f7' }} />
+                  {msg.text}
                 </div>
-              )}
+              </div>
             </motion.div>
           ))}
-        </AnimatePresence>
 
-        {/* Typing indicator */}
-        <AnimatePresence>
+          {/* Streaming Text Indicator */}
           {isTyping && (
             <motion.div
               initial={{ opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: 8 }}
-              className="flex gap-2 items-center"
+              className="flex gap-2 items-start"
             >
               <div
-                className="w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0"
+                className="w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5"
                 style={{ background: 'rgba(0,245,255,0.1)', border: '1px solid rgba(0,245,255,0.3)' }}
               >
                 <div className="w-1.5 h-1.5 rounded-full" style={{ background: '#00f5ff' }} />
               </div>
               <div
-                className="px-3 py-2 rounded-2xl flex items-center gap-1.5"
-                style={{ background: 'rgba(0,245,255,0.05)', border: '1px solid rgba(0,245,255,0.15)' }}
+                className="max-w-[88%] px-3.5 py-2.5 rounded-2xl"
+                style={{
+                  background: 'rgba(0, 245, 255, 0.05)',
+                  border: '1px solid rgba(0,245,255,0.2)',
+                  borderRadius: '4px 16px 16px 16px',
+                }}
               >
-                {[0, 1, 2].map(i => (
-                  <motion.div
-                    key={i}
-                    animate={{ y: [-2, 2, -2] }}
-                    transition={{ duration: 0.8, repeat: Infinity, delay: i * 0.15 }}
-                    className="w-1.5 h-1.5 rounded-full"
-                    style={{ background: '#00f5ff' }}
-                  />
-                ))}
+                <div className="flex items-center gap-1.5 mb-1">
+                  <span style={{ ...mono, color: '#00f5ff', fontSize: '9px', letterSpacing: '0.1em' }}>
+                    CAT AI (ĐANG TRUYỀN DỮ LIỆU)
+                  </span>
+                  <RefreshCw className="w-2.5 h-2.5 animate-spin text-cyan-400" />
+                </div>
+                <div style={{ ...aptos, color: 'rgba(255,255,255,0.9)', fontSize: '13px', lineHeight: '1.55' }}>
+                  {streamingText || 'Đang tư duy và xử lý nơ-ron...'}
+                  <motion.span
+                    animate={{ opacity: [1, 0] }}
+                    transition={{ duration: 0.5, repeat: Infinity }}
+                    style={{ color: '#00f5ff', marginLeft: 2 }}
+                  >
+                    ▋
+                  </motion.span>
+                </div>
               </div>
             </motion.div>
           )}
@@ -280,56 +366,102 @@ export function CommandConsole() {
         <div ref={endRef} />
       </div>
 
-      {/* Suggestions */}
+      {/* Suggestion Chips */}
       <div className="flex flex-wrap gap-1.5 flex-shrink-0">
         {SUGGESTIONS.map(s => (
           <motion.button
             key={s}
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            onClick={() => { setInput(s); inputRef.current?.focus(); }}
+            whileHover={{ scale: 1.04 }}
+            whileTap={{ scale: 0.96 }}
+            onClick={() => {
+              sounds.playClick();
+              setInput(s);
+              inputRef.current?.focus();
+            }}
             className="px-2.5 py-1 rounded-lg cursor-pointer"
             style={{
               background: 'rgba(0,245,255,0.04)',
               border: '1px solid rgba(0,245,255,0.15)',
             }}
           >
-            <span style={{ ...mono, color: 'rgba(0,245,255,0.6)', fontSize: '9px' }}>{s}</span>
+            <span style={{ ...aptos, color: 'rgba(0,245,255,0.7)', fontSize: '11px' }}>{s}</span>
           </motion.button>
         ))}
       </div>
 
-      {/* Input */}
+      {/* Attached File Preview Bar */}
+      {attachedFile && (
+        <div
+          className="flex items-center justify-between px-3 py-1.5 rounded-xl flex-shrink-0"
+          style={{ background: 'rgba(0,245,255,0.08)', border: '1px solid rgba(0,245,255,0.3)' }}
+        >
+          <div className="flex items-center gap-2 min-w-0">
+            <FileText className="w-3.5 h-3.5 text-cyan-400 flex-shrink-0" />
+            <span style={{ ...aptos, color: '#00f5ff', fontSize: '12px' }} className="truncate">
+              {attachedFile.name} ({(attachedFile.size / 1024).toFixed(1)} KB)
+            </span>
+          </div>
+          <button
+            onClick={() => setAttachedFile(null)}
+            className="p-1 text-red-400 hover:text-red-300 cursor-pointer"
+          >
+            <X className="w-3.5 h-3.5" />
+          </button>
+        </div>
+      )}
+
+      {/* Input Box */}
       <div
-        className="flex items-center gap-2 rounded-xl px-3 py-2.5 flex-shrink-0"
+        className="flex items-center gap-2 rounded-xl px-3 py-2 flex-shrink-0"
         style={{
-          background: 'rgba(0,8,25,0.7)',
-          border: '1px solid rgba(0,245,255,0.2)',
-          boxShadow: '0 0 10px rgba(0,245,255,0.04)',
+          background: 'rgba(0,8,25,0.75)',
+          border: '1px solid rgba(0,245,255,0.25)',
+          boxShadow: '0 0 15px rgba(0,245,255,0.06)',
         }}
       >
+        <input
+          ref={fileInputRef}
+          type="file"
+          className="hidden"
+          onChange={handleFileUpload}
+        />
+
+        {/* Paperclip Button */}
+        <motion.button
+          whileHover={{ scale: 1.1 }}
+          whileTap={{ scale: 0.9 }}
+          onClick={() => fileInputRef.current?.click()}
+          className="p-1.5 rounded-lg cursor-pointer"
+          style={{ background: 'rgba(0,245,255,0.06)', border: '1px solid rgba(0,245,255,0.15)' }}
+          title="Đính kèm file tài liệu"
+        >
+          <Paperclip className="w-3.5 h-3.5 text-cyan-400" />
+        </motion.button>
+
         <span style={{ ...mono, color: 'rgba(0,245,255,0.5)', fontSize: '12px' }}>{'>'}</span>
+
         <input
           ref={inputRef}
           value={input}
           onChange={e => setInput(e.target.value)}
           onKeyDown={e => e.key === 'Enter' && handleSubmit()}
-          placeholder="Enter command or speak..."
+          placeholder="Nhập câu hỏi, lệnh hệ thống hoặc đính kèm file..."
           className="flex-1 outline-none bg-transparent"
-          style={{ ...raj, color: 'rgba(255,255,255,0.85)', fontSize: '13px' }}
+          style={{ ...aptos, color: 'rgba(255,255,255,0.9)', fontSize: '13px' }}
         />
+
         <motion.button
           whileHover={{ scale: 1.1 }}
           whileTap={{ scale: 0.9 }}
           onClick={handleSubmit}
-          disabled={!input.trim() || isTyping}
-          className="w-7 h-7 rounded-lg flex items-center justify-center cursor-pointer"
+          disabled={(!input.trim() && !attachedFile) || isTyping}
+          className="w-8 h-8 rounded-lg flex items-center justify-center cursor-pointer"
           style={{
-            background: input.trim() && !isTyping ? 'rgba(0,245,255,0.2)' : 'rgba(0,245,255,0.04)',
-            border: `1px solid ${input.trim() && !isTyping ? 'rgba(0,245,255,0.5)' : 'rgba(0,245,255,0.1)'}`,
+            background: (input.trim() || attachedFile) && !isTyping ? 'rgba(0,245,255,0.25)' : 'rgba(0,245,255,0.04)',
+            border: `1px solid ${(input.trim() || attachedFile) && !isTyping ? 'rgba(0,245,255,0.6)' : 'rgba(0,245,255,0.1)'}`,
           }}
         >
-          <Send className="w-3.5 h-3.5" style={{ color: input.trim() && !isTyping ? '#00f5ff' : 'rgba(0,245,255,0.3)' }} />
+          <Send className="w-4 h-4" style={{ color: (input.trim() || attachedFile) && !isTyping ? '#00f5ff' : 'rgba(0,245,255,0.3)' }} />
         </motion.button>
       </div>
     </div>

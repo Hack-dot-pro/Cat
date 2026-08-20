@@ -5,38 +5,38 @@ import { sounds } from '../services/sound';
 
 const orb = { fontFamily: 'Orbitron, sans-serif' };
 const mono = { fontFamily: 'Share Tech Mono, monospace' };
-const raj = { fontFamily: 'Rajdhani, sans-serif' };
+const aptos = { fontFamily: "'Aptos Narrow', 'Aptos', sans-serif" };
 
 const stateConfig = {
   idle: {
     color: '#00f5ff',
     glow: 'rgba(0, 245, 255, 0.5)',
-    label: 'STANDBY',
-    subLabel: 'NEXUS NEURAL CORE ONLINE',
+    label: 'CHỜ LỆNH',
+    subLabel: 'LÕI NƠ-RON CAT AI TRỰC TUYẾN',
     pulseSpeed: 3,
     ringColor: 'rgba(0,245,255,0.4)',
   },
   listening: {
     color: '#22c55e',
     glow: 'rgba(34, 197, 94, 0.6)',
-    label: 'LISTENING',
-    subLabel: 'VOICE RECOGNITION ACTIVE',
+    label: 'ĐANG LẮNG NGHE',
+    subLabel: 'NHẬN DIỆN GIỌNG NÓI ĐANG KÍCH HOẠT',
     pulseSpeed: 0.8,
     ringColor: 'rgba(34,197,94,0.5)',
   },
   processing: {
     color: '#f59e0b',
     glow: 'rgba(245, 158, 11, 0.6)',
-    label: 'PROCESSING',
-    subLabel: 'NEURAL ANALYSIS IN PROGRESS',
+    label: 'ĐANG XỬ LÝ',
+    subLabel: 'PHÂN TÍCH NƠ-RON ĐANG TIẾN HÀNH',
     pulseSpeed: 0.4,
     ringColor: 'rgba(245,158,11,0.5)',
   },
   responding: {
     color: '#a855f7',
     glow: 'rgba(168, 85, 247, 0.6)',
-    label: 'RESPONDING',
-    subLabel: 'GENERATING OUTPUT STREAM',
+    label: 'ĐANG PHẢN HỒI',
+    subLabel: 'ĐANG TRUYỀN DỮ LIỆU ĐẦU RA',
     pulseSpeed: 0.6,
     ringColor: 'rgba(168,85,247,0.5)',
   },
@@ -81,15 +81,14 @@ function Ring({
 }
 
 export function AICore() {
-  const { aiState, setAiState, setScanningActive, addNotification } = useApp();
+  const { aiState, setAiState, addNotification } = useApp();
   const cfg = stateConfig[aiState];
-  const [clickCount, setClickCount] = useState(0);
   const [dataPoints, setDataPoints] = useState<{ x: number; y: number; val: string }[]>([]);
 
   useEffect(() => {
     const pts = Array(8).fill(0).map((_, i) => {
       const angle = (i / 8) * Math.PI * 2;
-      const r = 150;
+      const r = 165; // increased radius for larger center
       return {
         x: Math.cos(angle) * r,
         y: Math.sin(angle) * r,
@@ -110,17 +109,16 @@ export function AICore() {
     const states: (typeof aiState)[] = ['idle', 'listening', 'processing', 'responding'];
     const next = states[(states.indexOf(aiState) + 1) % states.length];
     setAiState(next);
-    setClickCount(c => c + 1);
     if (next === 'listening') {
       sounds.playVoiceStart();
-      addNotification({ type: 'success', title: 'Voice Active', message: 'Microphone is now listening for commands.' });
+      addNotification({ type: 'success', title: 'Micro kích hoạt', message: 'CAT AI đang lắng nghe lệnh giọng nói...' });
     }
   };
 
   return (
     <div className="flex flex-col items-center justify-center gap-6 select-none" style={{ perspective: '600px' }}>
-      {/* Outer data ring indicators */}
-      <div className="relative" style={{ width: 380, height: 380 }}>
+      {/* Outer data ring indicators (Increased by 10% from 380 to 420) */}
+      <div className="relative" style={{ width: 420, height: 420 }}>
         {/* Data point markers */}
         {dataPoints.map((pt, i) => (
           <motion.div
@@ -139,63 +137,36 @@ export function AICore() {
           </motion.div>
         ))}
 
-        {/* Outer dashed ring */}
-        <Ring size={340} thickness={1} color="rgba(0,245,255,0.1)" duration={40} dashed />
+        {/* 3D Gyroscope Rings */}
+        <Ring size={410} thickness={1} color={cfg.ringColor} duration={35} direction={1} dashed tilt={60} />
+        <Ring size={360} thickness={1} color={cfg.ringColor} duration={25} direction={-1} tilt={30} />
+        <Ring size={310} thickness={1.5} color={cfg.ringColor} duration={18} direction={1} dashed tilt={-45} />
+        <Ring size={260} thickness={1} color={cfg.color} duration={12} direction={-1} tilt={70} />
+        <Ring size={210} thickness={2} color={cfg.color} duration={8} direction={1} dashed />
+        <Ring size={160} thickness={1.5} color={cfg.ringColor} duration={5} direction={-1} />
 
-        {/* Ring 1 — large slow */}
-        <Ring size={300} thickness={1} color={cfg.ringColor.replace('0.5', '0.2')} duration={20} direction={1} tilt={20} />
-        {/* Ring 2 — medium counter */}
-        <Ring size={260} thickness={1.5} color={cfg.ringColor.replace('0.5', '0.3')} duration={14} direction={-1} tilt={-15} />
-        {/* Ring 3 — fast accent */}
-        <Ring size={210} thickness={1} color={cfg.ringColor} duration={8} direction={1} />
-
-        {/* Pulse wave rings */}
-        <motion.div
-          animate={{ scale: [1, 1.4, 1], opacity: [0.3, 0, 0.3] }}
-          transition={{ duration: cfg.pulseSpeed * 2, repeat: Infinity }}
-          className="absolute rounded-full"
-          style={{
-            width: 180,
-            height: 180,
-            left: '50%',
-            top: '50%',
-            marginLeft: -90,
-            marginTop: -90,
-            border: `1px solid ${cfg.color}`,
-          }}
-        />
-        <motion.div
-          animate={{ scale: [1, 1.6, 1], opacity: [0.2, 0, 0.2] }}
-          transition={{ duration: cfg.pulseSpeed * 2, repeat: Infinity, delay: 0.4 }}
-          className="absolute rounded-full"
-          style={{
-            width: 180,
-            height: 180,
-            left: '50%',
-            top: '50%',
-            marginLeft: -90,
-            marginTop: -90,
-            border: `1px solid ${cfg.color}`,
-          }}
-        />
-
-        {/* Clickable Core Orb */}
+        {/* Pulsing Core Sphere */}
         <motion.div
           onClick={handleClick}
-          whileHover={{ scale: 1.05 }}
-          whileTap={{ scale: 0.95 }}
-          className="absolute cursor-pointer rounded-full flex items-center justify-center"
+          animate={{
+            scale: [1, 1.08, 1],
+            boxShadow: [
+              `0 0 30px ${cfg.glow}, inset 0 0 20px ${cfg.glow}`,
+              `0 0 60px ${cfg.glow}, inset 0 0 40px ${cfg.glow}`,
+              `0 0 30px ${cfg.glow}, inset 0 0 20px ${cfg.glow}`,
+            ],
+          }}
+          transition={{ duration: cfg.pulseSpeed, repeat: Infinity, ease: 'easeInOut' }}
+          className="absolute rounded-full flex items-center justify-center cursor-pointer"
           style={{
-            width: 160,
-            height: 160,
+            width: 140,
+            height: 140,
             left: '50%',
             top: '50%',
-            marginLeft: -80,
-            marginTop: -80,
-            background: `radial-gradient(circle at 35% 35%, ${cfg.color}25 0%, rgba(0,5,20,0.9) 60%, rgba(0,2,10,1) 100%)`,
+            marginLeft: -70,
+            marginTop: -70,
+            background: 'radial-gradient(circle, rgba(0, 15, 35, 0.95) 0%, rgba(0, 5, 15, 0.98) 100%)',
             border: `2px solid ${cfg.color}`,
-            boxShadow: `0 0 30px ${cfg.glow}, 0 0 60px ${cfg.glow.replace('0.5', '0.2')}, inset 0 0 30px ${cfg.glow.replace('0.5', '0.15')}`,
-            transition: 'box-shadow 0.5s, border-color 0.5s, background 0.5s',
           }}
         >
           {/* Inner glow core */}
@@ -204,9 +175,9 @@ export function AICore() {
             transition={{ duration: cfg.pulseSpeed, repeat: Infinity }}
             className="rounded-full flex items-center justify-center flex-col gap-1"
             style={{
-              width: 120,
-              height: 120,
-              background: `radial-gradient(circle, ${cfg.color}20 0%, transparent 70%)`,
+              width: 130,
+              height: 130,
+              background: `radial-gradient(circle, ${cfg.color}25 0%, transparent 70%)`,
             }}
           >
             {/* Core logo */}
@@ -214,7 +185,7 @@ export function AICore() {
               animate={{ rotate: aiState === 'processing' ? 360 : 0 }}
               transition={{ duration: 1.5, repeat: aiState === 'processing' ? Infinity : 0, ease: 'linear' }}
             >
-              <svg width="36" height="36" viewBox="0 0 36 36" fill="none">
+              <svg width="40" height="40" viewBox="0 0 36 36" fill="none">
                 <circle cx="18" cy="18" r="16" stroke={cfg.color} strokeWidth="1" opacity="0.5" />
                 <circle cx="18" cy="18" r="10" stroke={cfg.color} strokeWidth="1.5" opacity="0.8" />
                 <circle cx="18" cy="18" r="4" fill={cfg.color} />
@@ -224,8 +195,8 @@ export function AICore() {
                 <line x1="28" y1="18" x2="34" y2="18" stroke={cfg.color} strokeWidth="1.5" />
               </svg>
             </motion.div>
-            <span style={{ ...orb, color: cfg.color, fontSize: '8px', letterSpacing: '0.1em', textAlign: 'center', opacity: 0.9 }}>
-              NEXUS
+            <span style={{ ...orb, color: cfg.color, fontSize: '9px', letterSpacing: '0.15em', textAlign: 'center', opacity: 0.95, fontWeight: 700 }}>
+              CAT AI
             </span>
           </motion.div>
         </motion.div>
@@ -253,15 +224,15 @@ export function AICore() {
             >
               {cfg.label}
             </span>
-            <span style={{ ...mono, color: 'rgba(255,255,255,0.35)', fontSize: '10px', letterSpacing: '0.12em' }}>
+            <span style={{ ...mono, color: 'rgba(255,255,255,0.45)', fontSize: '10px', letterSpacing: '0.12em' }}>
               {cfg.subLabel}
             </span>
           </motion.div>
         </AnimatePresence>
 
-        {/* Status bar */}
+        {/* Subsystem status bars */}
         <div className="flex items-center gap-3 mt-1">
-          {['NEURAL', 'VOICE', 'MEMORY', 'NETWORK'].map((item, i) => (
+          {['NƠ-RON', 'GIỌNG NÓI', 'BỘ NHỚ', 'MẠNG LƯỚI'].map((item, i) => (
             <div key={item} className="flex flex-col items-center gap-1">
               <div
                 className="w-12 h-0.5 rounded-full overflow-hidden"
@@ -274,18 +245,20 @@ export function AICore() {
                   style={{ background: cfg.color, boxShadow: `0 0 4px ${cfg.color}` }}
                 />
               </div>
-              <span style={{ ...mono, color: 'rgba(255,255,255,0.25)', fontSize: '8px' }}>{item}</span>
+              <span style={{ ...mono, color: 'rgba(255,255,255,0.35)', fontSize: '8px' }}>
+                {item}
+              </span>
             </div>
           ))}
         </div>
 
         {/* Click hint */}
         <motion.p
-          animate={{ opacity: [0.3, 0.6, 0.3] }}
+          animate={{ opacity: [0.3, 0.7, 0.3] }}
           transition={{ duration: 3, repeat: Infinity }}
-          style={{ ...raj, color: 'rgba(0,245,255,0.4)', fontSize: '11px', marginTop: 4 }}
+          style={{ ...aptos, color: 'rgba(0,245,255,0.6)', fontSize: '12px', marginTop: 4 }}
         >
-          CLICK ORB TO CYCLE STATE
+          NHẤN VÀO LÕI ĐỂ CHUYỂN TRẠNG THÁI CAT AI
         </motion.p>
       </div>
     </div>

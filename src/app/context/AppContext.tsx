@@ -1,5 +1,7 @@
 import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
 import { sounds } from '../services/sound';
+import { openAIService, AISettings, DEFAULT_AI_SETTINGS } from '../services/openai';
+import { UploadedDocument } from '../components/FilesPanel';
 
 export type AIState = 'idle' | 'listening' | 'processing' | 'responding';
 
@@ -8,6 +10,7 @@ export interface Message {
   type: 'user' | 'ai';
   text: string;
   timestamp: Date;
+  attachedFile?: { name: string; size: number };
 }
 
 export interface Notification {
@@ -43,15 +46,27 @@ interface AppContextType {
   setSettingsOpen: (v: boolean) => void;
   gestureOpen: boolean;
   setGestureOpen: (v: boolean) => void;
+  filesOpen: boolean;
+  setFilesOpen: (v: boolean) => void;
+  mcpOpen: boolean;
+  setMcpOpen: (v: boolean) => void;
   leftPanel: 'monitor' | 'memory';
   setLeftPanel: (v: 'monitor' | 'memory') => void;
   rightPanel: 'console' | 'search';
   setRightPanel: (v: 'console' | 'search') => void;
   memories: MemoryItem[];
+  uploadedFiles: UploadedDocument[];
+  setUploadedFiles: React.Dispatch<React.SetStateAction<UploadedDocument[]>>;
   soundEnabled: boolean;
   setSoundEnabled: (v: boolean) => void;
   soundVolume: number;
   setSoundVolume: (v: number) => void;
+  aiSettings: AISettings;
+  updateAiSettings: (settings: Partial<AISettings>) => void;
+  userFullName: string;
+  setUserFullName: (name: string) => void;
+  userName: string;
+  setUserName: (name: string) => void;
 }
 
 const AppContext = createContext<AppContextType | null>(null);
@@ -60,19 +75,19 @@ const initialMessages: Message[] = [
   {
     id: '1',
     type: 'ai',
-    text: 'NEXUS AI v3.7 initialized. Neural core online. All subsystems operational. Voice recognition active. How can I assist you today?',
+    text: 'Hệ điều hành **CAT AI v3.8** đã khởi tạo thành công. Lõi nơ-ron đa tầng trực tuyến. Chào mừng **Vinh_Admin** (Vinh)! Chuẩn kết nối OpenAI Completions (Xkiro AI Gateway) và giao thức MCP đã sẵn sàng phục vụ.',
     timestamp: new Date(Date.now() - 8000),
   },
   {
     id: '2',
     type: 'user',
-    text: 'Run system diagnostics.',
+    text: 'Kiểm tra trạng thái hệ thống và tài nguyên nơ-ron.',
     timestamp: new Date(Date.now() - 5000),
   },
   {
     id: '3',
     type: 'ai',
-    text: 'Diagnostics complete. CPU: 42% nominal. Memory: 6.2GB/16GB. Network: 847ms latency. Security: All encryption layers intact. No anomalies detected.',
+    text: 'Chẩn đoán hoàn tất: CPU: 38% định mức. Bộ nhớ: 6.2GB/16GB. Độ trễ Gateway: 18ms. Giao thức bảo mật: AES-256 kích hoạt. Toàn bộ 6 công cụ MCP lõi đang trực tuyến.',
     timestamp: new Date(Date.now() - 3000),
   },
 ];
@@ -80,42 +95,34 @@ const initialMessages: Message[] = [
 const initialMemories: MemoryItem[] = [
   {
     id: '1',
-    title: 'System Configuration',
-    content: 'Primary interface configured with Gemini 2.5 model. Performance mode: Ultra. Voice recognition sensitivity: 0.92.',
-    tags: ['system', 'config'],
+    title: 'Cấu hình CAT AI & Gateway Xkiro',
+    content: 'Cấu hình hoàn tất chuẩn OpenAI Completions với base URL https://api.xkiro.com/v1 và mô hình Gwen 3.8 max. Độ trễ 18ms.',
+    tags: ['cấu hình', 'gateway', 'xkiro'],
     timestamp: new Date(Date.now() - 86400000 * 2),
     synced: true,
   },
   {
     id: '2',
-    title: 'Voice Command Macro',
-    content: 'Created shortcut: "Deploy" = git push origin main && run deploy --production',
-    tags: ['voice', 'dev'],
+    title: 'Giao thức MCP (Model Context Protocol)',
+    content: 'Tích hợp 6 công cụ lõi: Máy tính khoa học, Hệ thống hóa tài liệu, Giám sát hệ thống, Mã hóa SHA-256, Thời gian thực và Trình đọc Web.',
+    tags: ['mcp', 'tools', 'giao thức'],
     timestamp: new Date(Date.now() - 86400000),
     synced: true,
   },
   {
     id: '3',
-    title: 'Research: Quantum Computing',
-    content: 'Summarized 14 papers on quantum decoherence and error correction. Key finding: surface codes most viable for near-term QC implementation.',
-    tags: ['research', 'quantum'],
+    title: 'Hệ thống hóa Tài liệu AI',
+    content: 'Module Document Systemizer phân tích cấu trúc, trích xuất số liệu và tóm tắt điều hành cấp cao từ file tài liệu tải lên.',
+    tags: ['tài liệu', 'ai', 'phân tích'],
     timestamp: new Date(Date.now() - 3600000 * 5),
     synced: false,
   },
   {
     id: '4',
-    title: 'API Integration Log',
-    content: 'OpenWeather API integrated. Custom Search Engine ID configured. Gemini 2.5 API key stored in secure vault.',
-    tags: ['api', 'config'],
+    title: 'Thông tin Quản trị viên',
+    content: 'Người dùng: Vinh | Username: Vinh_Admin | Quyền hạn: Toàn quyền truy cập hệ thống CAT AI.',
+    tags: ['admin', 'vinh', 'profile'],
     timestamp: new Date(Date.now() - 3600000 * 2),
-    synced: true,
-  },
-  {
-    id: '5',
-    title: 'User Preference Update',
-    content: 'Dark mode holographic theme selected. Response verbosity: detailed. Gesture sensitivity calibrated to user profile.',
-    tags: ['preferences', 'ui'],
-    timestamp: new Date(Date.now() - 1800000),
     synced: true,
   },
 ];
@@ -128,9 +135,28 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [appGridOpen, setAppGridOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [gestureOpen, setGestureOpen] = useState(false);
+  const [filesOpen, setFilesOpen] = useState(false);
+  const [mcpOpen, setMcpOpen] = useState(false);
   const [leftPanel, setLeftPanel] = useState<'monitor' | 'memory'>('monitor');
   const [rightPanel, setRightPanel] = useState<'console' | 'search'>('console');
   const [memories] = useState<MemoryItem[]>(initialMemories);
+  const [uploadedFiles, setUploadedFiles] = useState<UploadedDocument[]>([]);
+
+  // User Profile
+  const [userFullName, setUserFullName] = useState<string>(() => {
+    return localStorage.getItem('cat_user_fullname') || import.meta.env.VITE_USER_FULL_NAME || 'Vinh';
+  });
+  const [userName, setUserName] = useState<string>(() => {
+    return localStorage.getItem('cat_user_name') || import.meta.env.VITE_USER_NAME || 'Vinh_Admin';
+  });
+
+  // AI Settings
+  const [aiSettings, setAiSettings] = useState<AISettings>(() => openAIService.getSettings());
+
+  const updateAiSettings = useCallback((newSettings: Partial<AISettings>) => {
+    openAIService.saveSettings(newSettings);
+    setAiSettings(openAIService.getSettings());
+  }, []);
 
   const [soundEnabled, setSoundEnabledState] = useState<boolean>(() => sounds.isEnabled());
   const [soundVolume, setSoundVolumeState] = useState<number>(() => sounds.getVolume());
@@ -139,7 +165,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const timer = setTimeout(() => {
       sounds.playStartup();
-    }, 500);
+    }, 400);
     return () => clearTimeout(timer);
   }, []);
 
@@ -192,11 +218,17 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       appGridOpen, setAppGridOpen,
       settingsOpen, setSettingsOpen,
       gestureOpen, setGestureOpen,
+      filesOpen, setFilesOpen,
+      mcpOpen, setMcpOpen,
       leftPanel, setLeftPanel,
       rightPanel, setRightPanel,
       memories,
+      uploadedFiles, setUploadedFiles,
       soundEnabled, setSoundEnabled,
       soundVolume, setSoundVolume,
+      aiSettings, updateAiSettings,
+      userFullName, setUserFullName,
+      userName, setUserName,
     }}>
       {children}
     </AppContext.Provider>

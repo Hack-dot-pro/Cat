@@ -2,28 +2,28 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   Globe, Music, FileText, Settings, Brain, Terminal,
-  BarChart3, Camera, ChevronUp, Grid
+  BarChart3, Camera, ChevronUp, Grid, Wrench
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { sounds } from '../services/sound';
 
 const orb = { fontFamily: 'Orbitron, sans-serif' };
 const mono = { fontFamily: 'Share Tech Mono, monospace' };
-const raj = { fontFamily: 'Rajdhani, sans-serif' };
+const aptos = { fontFamily: "'Aptos Narrow', 'Aptos', sans-serif" };
 
 const DOCK_APPS = [
-  { id: 'nexus', name: 'NEXUS', icon: Brain, color: '#a855f7' },
-  { id: 'terminal', name: 'Terminal', icon: Terminal, color: '#00f5ff' },
+  { id: 'cat', name: 'CAT AI', icon: Brain, color: '#a855f7' },
+  { id: 'terminal', name: 'Dòng lệnh', icon: Terminal, color: '#00f5ff' },
+  { id: 'files', name: 'Tài liệu', icon: FileText, color: '#f59e0b' },
+  { id: 'mcp', name: 'Công cụ MCP', icon: Wrench, color: '#22c55e' },
   { id: 'browser', name: 'Holoweb', icon: Globe, color: '#0ea5e9' },
-  { id: 'monitor', name: 'Monitor', icon: BarChart3, color: '#22c55e' },
+  { id: 'monitor', name: 'Giám sát', icon: BarChart3, color: '#22c55e' },
   { id: 'vision', name: 'AI Vision', icon: Camera, color: '#ec4899' },
-  { id: 'music', name: 'Spotify', icon: Music, color: '#1db954' },
-  { id: 'files', name: 'Files', icon: FileText, color: '#f59e0b' },
-  { id: 'settings', name: 'Settings', icon: Settings, color: '#64748b' },
+  { id: 'settings', name: 'Cài đặt', icon: Settings, color: '#64748b' },
 ];
 
 export function AppDock() {
-  const { setAppGridOpen, setSettingsOpen, addNotification } = useApp();
+  const { setAppGridOpen, setSettingsOpen, setFilesOpen, setMcpOpen, setRightPanel, addNotification } = useApp();
   const [hovered, setHovered] = useState<string | null>(null);
   const [tooltip, setTooltip] = useState<string | null>(null);
 
@@ -31,8 +31,14 @@ export function AppDock() {
     sounds.playClick();
     if (app.id === 'settings') {
       setSettingsOpen(true);
+    } else if (app.id === 'files') {
+      setFilesOpen(true);
+    } else if (app.id === 'mcp') {
+      setMcpOpen(true);
+    } else if (app.id === 'terminal') {
+      setRightPanel('console');
     } else {
-      addNotification({ type: 'info', title: `${app.name} Launching`, message: `Initializing ${app.name}...` });
+      addNotification({ type: 'info', title: `Khởi chạy ${app.name}`, message: `Đang kết nối dịch vụ ${app.name}...` });
     }
   };
 
@@ -58,16 +64,16 @@ export function AppDock() {
     >
       {/* Left label */}
       <div className="absolute left-6 flex flex-col">
-        <span style={{ ...orb, color: 'rgba(0,245,255,0.5)', fontSize: '8px', letterSpacing: '0.15em' }}>NEXUS</span>
-        <span style={{ ...mono, color: 'rgba(0,245,255,0.3)', fontSize: '7px' }}>APP DOCK</span>
+        <span style={{ ...orb, color: 'rgba(0,245,255,0.6)', fontSize: '9px', letterSpacing: '0.15em' }}>CAT AI</span>
+        <span style={{ ...mono, color: 'rgba(0,245,255,0.35)', fontSize: '7px' }}>APP DOCK</span>
       </div>
 
       {/* Dock inner container */}
       <div
         className="flex items-end gap-1.5 px-4 py-2 rounded-2xl"
         style={{
-          background: 'rgba(0, 10, 25, 0.6)',
-          border: '1px solid rgba(0,245,255,0.12)',
+          background: 'rgba(0, 10, 25, 0.65)',
+          border: '1px solid rgba(0,245,255,0.15)',
           boxShadow: '0 0 30px rgba(0,0,0,0.5)',
         }}
       >
@@ -97,7 +103,7 @@ export function AppDock() {
                     boxShadow: `0 0 12px ${app.color}20`,
                   }}
                 >
-                  <span style={{ ...mono, color: app.color, fontSize: '10px' }}>{app.name}</span>
+                  <span style={{ ...aptos, color: app.color, fontSize: '11px', fontWeight: 600 }}>{app.name}</span>
                 </motion.div>
               )}
             </AnimatePresence>
@@ -117,7 +123,7 @@ export function AppDock() {
               <app.icon className="w-5 h-5" style={{ color: app.color }} />
 
               {/* Active indicator */}
-              {(app.id === 'nexus') && (
+              {(app.id === 'cat') && (
                 <div
                   className="absolute -bottom-1.5 w-1.5 h-1.5 rounded-full"
                   style={{ background: app.color, boxShadow: `0 0 4px ${app.color}` }}
@@ -146,7 +152,7 @@ export function AppDock() {
                 className="absolute bottom-full mb-2 px-2.5 py-1 rounded-lg whitespace-nowrap"
                 style={{ background: 'rgba(0,10,25,0.95)', border: '1px solid rgba(0,245,255,0.2)' }}
               >
-                <span style={{ ...mono, color: '#00f5ff', fontSize: '10px' }}>All Apps</span>
+                <span style={{ ...aptos, color: '#00f5ff', fontSize: '11px' }}>Tất cả ứng dụng</span>
               </motion.div>
             )}
           </AnimatePresence>
