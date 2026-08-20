@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Mic, MicOff, Type, Volume2 } from 'lucide-react';
+import { Mic, MicOff, Type, Volume2, Send } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 
 const orb = { fontFamily: 'Orbitron, sans-serif' };
@@ -10,7 +10,7 @@ const raj = { fontFamily: 'Rajdhani, sans-serif' };
 const BAR_COUNT = 32;
 
 export function VoiceBar() {
-  const { aiState, setAiState, addMessage, addNotification, setScanningActive, setSettingsOpen, setAppGridOpen } = useApp();
+  const { aiState, setAiState, sendAIChat, addNotification } = useApp();
   const [textMode, setTextMode] = useState(false);
   const [input, setInput] = useState('');
   const [bars, setBars] = useState(() => Array(BAR_COUNT).fill(0.15));
@@ -24,19 +24,27 @@ export function VoiceBar() {
   useEffect(() => {
     if (isListening) {
       intervalRef.current = setInterval(() => {
-        setBars(Array(BAR_COUNT).fill(0).map((_, i) => {
-          const center = BAR_COUNT / 2;
-          const dist = Math.abs(i - center) / center;
-          const base = 0.2 + Math.random() * 0.7 * (1 - dist * 0.5);
-          return base;
-        }));
+        setBars(
+          Array(BAR_COUNT)
+            .fill(0)
+            .map((_, i) => {
+              const center = BAR_COUNT / 2;
+              const dist = Math.abs(i - center) / center;
+              const base = 0.2 + Math.random() * 0.7 * (1 - dist * 0.5);
+              return base;
+            })
+        );
       }, 80);
     } else if (isProcessing) {
       intervalRef.current = setInterval(() => {
-        setBars(Array(BAR_COUNT).fill(0).map((_, i) => {
-          const t = Date.now() / 200;
-          return 0.2 + 0.4 * Math.abs(Math.sin(t + i * 0.3));
-        }));
+        setBars(
+          Array(BAR_COUNT)
+            .fill(0)
+            .map((_, i) => {
+              const t = Date.now() / 200;
+              return 0.2 + 0.4 * Math.abs(Math.sin(t + i * 0.3));
+            })
+        );
       }, 50);
     } else {
       if (intervalRef.current) clearInterval(intervalRef.current);
@@ -45,40 +53,40 @@ export function VoiceBar() {
     return () => {
       if (intervalRef.current) clearInterval(intervalRef.current);
     };
-  }, [aiState]);
+  }, [isListening, isProcessing]);
 
   const MOCK_VOICE_COMMANDS = [
     'Run system diagnostics',
-    'Show weather forecast',
-    'Open settings panel',
-    'Scan environment',
-    'Deploy application',
-    'Check memory status',
+    'Explain quantum computing advances in 2026',
+    'Scan current network environment',
+    'Analyze system memory and telemetry',
+    'Open settings panel and show API configuration',
+    'What is the current status of all neural subsystems?',
   ];
 
-  const toggleListening = () => {
+  const toggleListening = async () => {
     if (isListening) {
-      // Simulate voice command processing
+      // Pick voice command or speech recognition
       const cmd = MOCK_VOICE_COMMANDS[Math.floor(Math.random() * MOCK_VOICE_COMMANDS.length)];
       setTranscript(cmd);
-      setAiState('processing');
-      addMessage({ type: 'user', text: cmd });
-      setTimeout(() => {
-        setAiState('responding');
-        const resp = `Voice command received: "${cmd}". Processing complete. Command executed successfully.`;
-        addMessage({ type: 'ai', text: resp });
-        if (cmd.toLowerCase().includes('scan')) setScanningActive(true);
-        if (cmd.toLowerCase().includes('settings')) setSettingsOpen(true);
-        setTimeout(() => {
-          setAiState('idle');
-          setTranscript('');
-        }, 2000);
-      }, 1500);
+      await sendAIChat(cmd);
+      setTranscript('');
     } else if (!isProcessing) {
       setAiState('listening');
       setTranscript('');
-      addNotification({ type: 'info', title: 'Voice Active', message: 'Listening for your command...' });
+      addNotification({
+        type: 'info',
+        title: 'Voice Active',
+        message: 'Listening for your voice input or command...',
+      });
     }
+  };
+
+  const handleTextSubmit = async () => {
+    if (!input.trim() || isProcessing) return;
+    const text = input.trim();
+    setInput('');
+    await sendAIChat(text);
   };
 
   const stateColor = {
@@ -111,6 +119,7 @@ export function VoiceBar() {
           background: textMode ? 'rgba(168,85,247,0.15)' : 'rgba(0,245,255,0.05)',
           border: `1px solid ${textMode ? 'rgba(168,85,247,0.4)' : 'rgba(0,245,255,0.15)'}`,
         }}
+        title={textMode ? 'Switch to Voice Waveform' : 'Switch to Quick Text'}
       >
         {textMode ? (
           <Type className="w-4 h-4" style={{ color: '#a855f7' }} />
@@ -119,7 +128,7 @@ export function VoiceBar() {
         )}
       </motion.button>
 
-      {/* Voice control */}
+      {/* Voice control / Text input */}
       <AnimatePresence mode="wait">
         {!textMode ? (
           <motion.div
@@ -158,9 +167,11 @@ export function VoiceBar() {
                   initial={{ opacity: 0, y: 4 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: 4 }}
-                  className="flex-shrink-0 max-w-48"
+                  className="flex-shrink-0 max-w-56 truncate"
                 >
-                  <span style={{ ...raj, color: 'rgba(255,255,255,0.7)', fontSize: '12px' }}>{transcript}</span>
+                  <span style={{ ...raj, color: 'rgba(255,255,255,0.75)', fontSize: '12px' }}>
+                    {transcript}
+                  </span>
                 </motion.div>
               )}
             </AnimatePresence>
@@ -175,16 +186,29 @@ export function VoiceBar() {
           >
             <div
               className="flex-1 flex items-center gap-2 rounded-xl px-4 py-2"
-              style={{ background: 'rgba(0,8,25,0.6)', border: '1px solid rgba(168,85,247,0.2)' }}
+              style={{
+                background: 'rgba(0,8,25,0.6)',
+                border: '1px solid rgba(168,85,247,0.25)',
+              }}
             >
               <span style={{ ...mono, color: 'rgba(168,85,247,0.5)', fontSize: '12px' }}>{'>'}</span>
               <input
                 value={input}
                 onChange={e => setInput(e.target.value)}
-                placeholder="Type a command..."
+                onKeyDown={e => e.key === 'Enter' && handleTextSubmit()}
+                placeholder="Ask CAT AI anything..."
                 className="flex-1 outline-none bg-transparent"
                 style={{ ...raj, color: 'rgba(255,255,255,0.85)', fontSize: '13px' }}
               />
+              <motion.button
+                whileHover={{ scale: 1.1 }}
+                whileTap={{ scale: 0.9 }}
+                onClick={handleTextSubmit}
+                disabled={!input.trim() || isProcessing}
+                className="p-1 cursor-pointer"
+              >
+                <Send className="w-4 h-4" style={{ color: input.trim() ? '#a855f7' : 'rgba(255,255,255,0.2)' }} />
+              </motion.button>
             </div>
           </motion.div>
         )}
@@ -238,7 +262,10 @@ export function VoiceBar() {
               animate={{ rotate: 360 }}
               transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
             >
-              <div className="w-4 h-4 rounded-full border-2 border-transparent" style={{ borderTopColor: '#f59e0b', borderRightColor: '#f59e0b40' }} />
+              <div
+                className="w-4 h-4 rounded-full border-2 border-transparent"
+                style={{ borderTopColor: '#f59e0b', borderRightColor: '#f59e0b40' }}
+              />
             </motion.div>
           ) : (
             <Mic className="w-5 h-5" style={{ color: '#00f5ff' }} />

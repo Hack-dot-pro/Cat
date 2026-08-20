@@ -217,31 +217,10 @@ function MainLayout() {
 }
 
 function QuickActionButton({ label, color, action }: { label: string; color: string; action: string }) {
-  const { addMessage, setAiState, setScanningActive, addNotification } = useApp();
+  const { sendAIChat } = useApp();
 
   const handleClick = () => {
-    addMessage({ type: 'user', text: action });
-    setAiState('processing');
-    if (action === 'scan') {
-      setTimeout(() => {
-        setScanningActive(true);
-        setAiState('responding');
-        addMessage({ type: 'ai', text: 'Scan initiated. Holographic display activating...' });
-        setTimeout(() => setAiState('idle'), 2000);
-      }, 600);
-    } else {
-      setTimeout(() => {
-        setAiState('responding');
-        const resp = action === 'analyze'
-          ? 'Deep neural analysis running... Pattern recognition: 99.2% confidence. No anomalies found.'
-          : action === 'deploy'
-          ? 'Deployment initiated. Docker container built. Production deployment: successful. Zero downtime.'
-          : 'Encryption protocol activated. AES-256 + RSA-4096 engaged. All channels secured.';
-        addMessage({ type: 'ai', text: resp });
-        addNotification({ type: 'success', title: `${label} Complete`, message: resp.slice(0, 60) + '...' });
-        setTimeout(() => setAiState('idle'), 2000);
-      }, 1000);
-    }
+    sendAIChat(action);
   };
 
   return (
