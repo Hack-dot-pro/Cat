@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
-import { Wifi, Shield, Cpu, Settings, Grid, Hand, Bell, Activity, Volume2, VolumeX, Bot } from 'lucide-react';
+import { Wifi, Shield, Cpu, Settings, Grid, Hand, Bell, Activity, Volume2, VolumeX } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { sounds } from '../services/sound';
 
@@ -18,10 +18,6 @@ export function TopBar() {
     addNotification,
     soundEnabled,
     setSoundEnabled,
-    robotSpeaking,
-    ttsEnabled,
-    setTtsEnabled,
-    stopSpeaking,
   } = useApp();
 
   useEffect(() => {
@@ -29,9 +25,9 @@ export function TopBar() {
     return () => clearInterval(interval);
   }, []);
 
-  const fmtTime = (d: Date) => d.toLocaleTimeString('vi-VN', { hour12: false });
+  const fmtTime = (d: Date) => d.toLocaleTimeString('en-US', { hour12: false });
   const fmtDate = (d: Date) =>
-    d.toLocaleDateString('vi-VN', { weekday: 'short', day: '2-digit', month: '2-digit', year: 'numeric' });
+    d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
 
   const stateColor = {
     idle: '#00f5ff',
@@ -41,10 +37,10 @@ export function TopBar() {
   }[aiState];
 
   const stateLabel = {
-    idle: 'CHỜ LỆNH',
-    listening: 'ĐANG LẮNG NGHE',
-    processing: 'ĐANG XỬ LÝ',
-    responding: 'ĐANG PHẢN HỒI',
+    idle: 'STANDBY',
+    listening: 'LISTENING',
+    processing: 'PROCESSING',
+    responding: 'RESPONDING',
   }[aiState];
 
   return (
@@ -80,9 +76,9 @@ export function TopBar() {
         </motion.div>
         <div>
           <div style={{ ...orb, color: '#00f5ff', fontSize: '13px', letterSpacing: '0.15em', textShadow: '0 0 10px rgba(0,245,255,0.6)' }}>
-            CAT
+            NEXUS AI
           </div>
-          <div style={{ ...mono, color: 'rgba(0,245,255,0.45)', fontSize: '10px' }}>HĐH v3.7.2 — ALPHA</div>
+          <div style={{ ...mono, color: 'rgba(0,245,255,0.45)', fontSize: '10px' }}>OS v3.7.2 — ALPHA</div>
         </div>
       </div>
 
@@ -105,10 +101,10 @@ export function TopBar() {
       {/* Center status row */}
       <div className="flex-1 flex items-center justify-center gap-6">
         {[
-          { icon: Wifi, label: 'TRỰC TUYẾN', val: '99.9%', color: '#22c55e' },
-          { icon: Shield, label: 'BẢO MẬT', val: 'AES-256', color: '#00f5ff' },
-          { icon: Cpu, label: 'TẢI CPU', val: '42%', color: '#a855f7' },
-          { icon: Activity, label: 'BĂNG THÔNG', val: '1.2GB/s', color: '#0ea5e9' },
+          { icon: Wifi, label: 'ONLINE', val: '99.9%', color: '#22c55e' },
+          { icon: Shield, label: 'SECURE', val: 'AES-256', color: '#00f5ff' },
+          { icon: Cpu, label: 'LOAD', val: '42%', color: '#a855f7' },
+          { icon: Activity, label: 'NET', val: '1.2GB/s', color: '#0ea5e9' },
         ].map(({ icon: Icon, label, val, color }) => (
           <div key={label} className="flex items-center gap-1.5">
             <Icon className="w-3 h-3" style={{ color }} />
@@ -138,9 +134,9 @@ export function TopBar() {
           onClick={() => {
             setSoundEnabled(!soundEnabled);
             addNotification({
-               type: 'info',
-              title: 'Âm thanh Hệ thống',
-              message: !soundEnabled ? 'Đã bật hiệu ứng âm thanh Sci-Fi.' : 'Đã tắt âm thanh.',
+              type: 'info',
+              title: 'Sound System',
+              message: !soundEnabled ? 'Sci-Fi sound effects enabled.' : 'Sound effects muted.',
             });
           }}
           className="w-8 h-8 rounded-lg flex items-center justify-center cursor-pointer"
@@ -148,7 +144,7 @@ export function TopBar() {
             background: soundEnabled ? 'rgba(0,245,255,0.1)' : 'rgba(255,255,255,0.04)',
             border: `1px solid ${soundEnabled ? 'rgba(0,245,255,0.4)' : 'rgba(255,255,255,0.15)'}`,
           }}
-          title={soundEnabled ? 'Tắt âm thanh' : 'Bật âm thanh'}
+          title={soundEnabled ? 'Mute Sound' : 'Enable Sound'}
         >
           {soundEnabled ? (
             <Volume2 className="w-4 h-4 text-cyan-400" />
@@ -157,57 +153,14 @@ export function TopBar() {
           )}
         </motion.button>
 
-        {/* Robot Voice TTS Toggle */}
-        <motion.button
-          whileHover={{ scale: 1.15 }}
-          whileTap={{ scale: 0.9 }}
-          onClick={() => {
-            if (robotSpeaking) {
-              stopSpeaking();
-            } else {
-              setTtsEnabled(!ttsEnabled);
-              addNotification({
-                type: 'info',
-                title: 'Giọng nói Robot Tiếng Việt',
-                message: !ttsEnabled ? 'Đã kích hoạt giọng đọc Robot AI.' : 'Đã tắt giọng nói Robot.',
-              });
-            }
-          }}
-          className="w-8 h-8 rounded-lg flex items-center justify-center cursor-pointer relative"
-          style={{
-            background: robotSpeaking
-              ? 'rgba(168,85,247,0.25)'
-              : ttsEnabled
-              ? 'rgba(168,85,247,0.12)'
-              : 'rgba(255,255,255,0.04)',
-            border: `1px solid ${robotSpeaking ? '#a855f7' : ttsEnabled ? 'rgba(168,85,247,0.4)' : 'rgba(255,255,255,0.15)'}`,
-            boxShadow: robotSpeaking ? '0 0 12px rgba(168,85,247,0.5)' : 'none',
-          }}
-          title={robotSpeaking ? 'Đang phát giọng nói (Nhấn để dừng)' : ttsEnabled ? 'Tắt giọng nói Robot' : 'Bật giọng nói Robot Tiếng Việt'}
-        >
-          <Bot className="w-4 h-4" style={{ color: robotSpeaking ? '#ffffff' : ttsEnabled ? '#a855f7' : '#6b7280' }} />
-          {robotSpeaking && (
-            <motion.div
-              animate={{ scale: [1, 1.4, 1], opacity: [0.8, 0, 0.8] }}
-              transition={{ duration: 1, repeat: Infinity }}
-              className="absolute inset-0 rounded-lg border border-purple-400"
-            />
-          )}
-        </motion.button>
-
         {[
           {
             icon: Bell,
             action: () => {
               sounds.playClick();
-              addNotification({
-                type: 'info',
-                title: 'Cảnh báo Hệ thống',
-                message: 'Tất cả hệ thống ở trạng thái tối ưu. Không phát hiện bất thường.',
-              });
+              addNotification({ type: 'info', title: 'System Alert', message: 'All systems nominal. No anomalies detected.' });
             },
             color: '#f59e0b',
-            title: 'Thông báo',
           },
           {
             icon: Hand,
@@ -216,7 +169,6 @@ export function TopBar() {
               setGestureOpen(true);
             },
             color: '#00f5ff',
-            title: 'Cử chỉ không gian',
           },
           {
             icon: Grid,
@@ -225,7 +177,6 @@ export function TopBar() {
               setAppGridOpen(true);
             },
             color: '#00f5ff',
-            title: 'Lưới ứng dụng',
           },
           {
             icon: Settings,
@@ -234,9 +185,8 @@ export function TopBar() {
               setSettingsOpen(true);
             },
             color: '#00f5ff',
-            title: 'Cài đặt hệ thống',
           },
-        ].map(({ icon: Icon, action, color, title }, i) => (
+        ].map(({ icon: Icon, action, color }, i) => (
           <motion.button
             key={i}
             whileHover={{ scale: 1.15 }}
@@ -248,7 +198,6 @@ export function TopBar() {
               border: '1px solid rgba(0,245,255,0.15)',
               transition: 'box-shadow 0.2s',
             }}
-            title={title}
             onMouseEnter={e => {
               (e.currentTarget as HTMLElement).style.boxShadow = `0 0 12px ${color}40`;
               (e.currentTarget as HTMLElement).style.borderColor = `${color}60`;

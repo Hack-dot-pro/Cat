@@ -1,5 +1,5 @@
 // Sci-Fi Sound Effects Synthesizer using Web Audio API
-// High-tech holographic audio feedback for CAT AI Operating System
+// High-tech holographic audio feedback for AI Operating System
 
 class SoundSystem {
   private ctx: AudioContext | null = null;
@@ -7,7 +7,6 @@ class SoundSystem {
   private volume: number = 0.3;
 
   constructor() {
-    // Read sound settings from localStorage
     try {
       const soundPref = localStorage.getItem('cat_sound_enabled');
       if (soundPref !== null) {

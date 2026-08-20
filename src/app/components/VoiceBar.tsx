@@ -1,31 +1,22 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Mic, Type, Volume2, Send } from 'lucide-react';
+import { Mic, MicOff, Type, Volume2 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { sounds } from '../services/sound';
 
+const orb = { fontFamily: 'Orbitron, sans-serif' };
 const mono = { fontFamily: 'Share Tech Mono, monospace' };
 const raj = { fontFamily: 'Rajdhani, sans-serif' };
 
 const BAR_COUNT = 32;
 
-const VIETNAMESE_VOICE_COMMANDS = [
-  'Kiểm tra chẩn đoán toàn bộ hệ thống',
-  'Phân tích tài nguyên CPU và bộ nhớ',
-  'Quét môi trường mạng và bảo mật',
-  'Giải thích kiến trúc mô hình Gwen 3.8 max',
-  'Mở bảng cài đặt cấu hình API',
-  'Báo cáo trạng thái các hệ thống nơ-ron',
-];
-
 export function VoiceBar() {
-  const { aiState, setAiState, sendAIChat, addNotification } = useApp();
+  const { aiState, setAiState, addMessage, addNotification, setScanningActive, setSettingsOpen, setAppGridOpen } = useApp();
   const [textMode, setTextMode] = useState(false);
   const [input, setInput] = useState('');
   const [bars, setBars] = useState(() => Array(BAR_COUNT).fill(0.15));
   const [transcript, setTranscript] = useState('');
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const recognitionRef = useRef<any>(null);
 
   const isListening = aiState === 'listening';
   const isProcessing = aiState === 'processing' || aiState === 'responding';
@@ -34,27 +25,19 @@ export function VoiceBar() {
   useEffect(() => {
     if (isListening) {
       intervalRef.current = setInterval(() => {
-        setBars(
-          Array(BAR_COUNT)
-            .fill(0)
-            .map((_, i) => {
-              const center = BAR_COUNT / 2;
-              const dist = Math.abs(i - center) / center;
-              const base = 0.2 + Math.random() * 0.7 * (1 - dist * 0.5);
-              return base;
-            })
-        );
+        setBars(Array(BAR_COUNT).fill(0).map((_, i) => {
+          const center = BAR_COUNT / 2;
+          const dist = Math.abs(i - center) / center;
+          const base = 0.2 + Math.random() * 0.7 * (1 - dist * 0.5);
+          return base;
+        }));
       }, 80);
     } else if (isProcessing) {
       intervalRef.current = setInterval(() => {
-        setBars(
-          Array(BAR_COUNT)
-            .fill(0)
-            .map((_, i) => {
-              const t = Date.now() / 200;
-              return 0.2 + 0.4 * Math.abs(Math.sin(t + i * 0.3));
-            })
-        );
+        setBars(Array(BAR_COUNT).fill(0).map((_, i) => {
+          const t = Date.now() / 200;
+          return 0.2 + 0.4 * Math.abs(Math.sin(t + i * 0.3));
+        }));
       }, 50);
     } else {
       if (intervalRef.current) clearInterval(intervalRef.current);
@@ -63,61 +46,42 @@ export function VoiceBar() {
     return () => {
       if (intervalRef.current) clearInterval(intervalRef.current);
     };
-  }, [isListening, isProcessing]);
+  }, [aiState]);
 
-  const toggleListening = async () => {
+  const MOCK_VOICE_COMMANDS = [
+    'Run system diagnostics',
+    'Show weather forecast',
+    'Open settings panel',
+    'Scan environment',
+    'Deploy application',
+    'Check memory status',
+  ];
+
+  const toggleListening = () => {
     if (isListening) {
       sounds.playVoiceEnd();
-      if (recognitionRef.current) {
-        try {
-          recognitionRef.current.stop();
-        } catch {}
-      }
-      const cmd = transcript || VIETNAMESE_VOICE_COMMANDS[Math.floor(Math.random() * VIETNAMESE_VOICE_COMMANDS.length)];
+      // Simulate voice command processing
+      const cmd = MOCK_VOICE_COMMANDS[Math.floor(Math.random() * MOCK_VOICE_COMMANDS.length)];
       setTranscript(cmd);
-      await sendAIChat(cmd);
-      setTranscript('');
+      setAiState('processing');
+      addMessage({ type: 'user', text: cmd });
+      setTimeout(() => {
+        setAiState('responding');
+        const resp = `Voice command received: "${cmd}". Processing complete. Command executed successfully.`;
+        addMessage({ type: 'ai', text: resp });
+        if (cmd.toLowerCase().includes('scan')) setScanningActive(true);
+        if (cmd.toLowerCase().includes('settings')) setSettingsOpen(true);
+        setTimeout(() => {
+          setAiState('idle');
+          setTranscript('');
+        }, 2000);
+      }, 1500);
     } else if (!isProcessing) {
       sounds.playVoiceStart();
       setAiState('listening');
       setTranscript('');
-
-      // Try browser Web Speech API for Vietnamese
-      const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-      if (SpeechRecognition) {
-        try {
-          const rec = new SpeechRecognition();
-          rec.lang = 'vi-VN';
-          rec.continuous = false;
-          rec.interimResults = true;
-          rec.onresult = (e: any) => {
-            const current = e.results[0][0].transcript;
-            setTranscript(current);
-          };
-          rec.onend = () => {
-            if (aiState === 'listening') {
-              // If stopped talking, submit
-            }
-          };
-          rec.onerror = () => {};
-          rec.start();
-          recognitionRef.current = rec;
-        } catch {}
-      }
-
-      addNotification({
-        type: 'info',
-        title: 'Giọng nói Đang Bật',
-        message: 'Đang lắng nghe lệnh giọng nói tiếng Việt của bạn...',
-      });
+      addNotification({ type: 'info', title: 'Voice Active', message: 'Listening for your command...' });
     }
-  };
-
-  const handleTextSubmit = async () => {
-    if (!input.trim() || isProcessing) return;
-    const text = input.trim();
-    setInput('');
-    await sendAIChat(text);
   };
 
   const stateColor = {
@@ -125,13 +89,6 @@ export function VoiceBar() {
     listening: '#22c55e',
     processing: '#f59e0b',
     responding: '#a855f7',
-  }[aiState];
-
-  const stateLabel = {
-    idle: 'CHỜ LỆNH',
-    listening: 'ĐANG NGHE',
-    processing: 'ĐANG XỬ LÝ',
-    responding: 'TRẢ LỜI',
   }[aiState];
 
   return (
@@ -151,16 +108,12 @@ export function VoiceBar() {
       <motion.button
         whileHover={{ scale: 1.1 }}
         whileTap={{ scale: 0.9 }}
-        onClick={() => {
-          sounds.playClick();
-          setTextMode(!textMode);
-        }}
+        onClick={() => setTextMode(!textMode)}
         className="w-10 h-10 rounded-xl flex items-center justify-center cursor-pointer flex-shrink-0"
         style={{
           background: textMode ? 'rgba(168,85,247,0.15)' : 'rgba(0,245,255,0.05)',
           border: `1px solid ${textMode ? 'rgba(168,85,247,0.4)' : 'rgba(0,245,255,0.15)'}`,
         }}
-        title={textMode ? 'Chuyển sang Sóng âm thanh Giọng nói' : 'Chuyển sang Nhập văn bản nhanh'}
       >
         {textMode ? (
           <Type className="w-4 h-4" style={{ color: '#a855f7' }} />
@@ -169,7 +122,7 @@ export function VoiceBar() {
         )}
       </motion.button>
 
-      {/* Voice control / Text input */}
+      {/* Voice control */}
       <AnimatePresence mode="wait">
         {!textMode ? (
           <motion.div
@@ -208,11 +161,9 @@ export function VoiceBar() {
                   initial={{ opacity: 0, y: 4 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: 4 }}
-                  className="flex-shrink-0 max-w-56 truncate"
+                  className="flex-shrink-0 max-w-48"
                 >
-                  <span style={{ ...raj, color: 'rgba(255,255,255,0.85)', fontSize: '12px' }}>
-                    "{transcript}"
-                  </span>
+                  <span style={{ ...raj, color: 'rgba(255,255,255,0.7)', fontSize: '12px' }}>{transcript}</span>
                 </motion.div>
               )}
             </AnimatePresence>
@@ -227,29 +178,16 @@ export function VoiceBar() {
           >
             <div
               className="flex-1 flex items-center gap-2 rounded-xl px-4 py-2"
-              style={{
-                background: 'rgba(0,8,25,0.6)',
-                border: '1px solid rgba(168,85,247,0.25)',
-              }}
+              style={{ background: 'rgba(0,8,25,0.6)', border: '1px solid rgba(168,85,247,0.2)' }}
             >
               <span style={{ ...mono, color: 'rgba(168,85,247,0.5)', fontSize: '12px' }}>{'>'}</span>
               <input
                 value={input}
                 onChange={e => setInput(e.target.value)}
-                onKeyDown={e => e.key === 'Enter' && handleTextSubmit()}
-                placeholder="Hỏi bất cứ điều gì với CAT AI..."
+                placeholder="Type a command..."
                 className="flex-1 outline-none bg-transparent"
                 style={{ ...raj, color: 'rgba(255,255,255,0.85)', fontSize: '13px' }}
               />
-              <motion.button
-                whileHover={{ scale: 1.1 }}
-                whileTap={{ scale: 0.9 }}
-                onClick={handleTextSubmit}
-                disabled={!input.trim() || isProcessing}
-                className="p-1 cursor-pointer"
-              >
-                <Send className="w-4 h-4" style={{ color: input.trim() ? '#a855f7' : 'rgba(255,255,255,0.2)' }} />
-              </motion.button>
             </div>
           </motion.div>
         )}
@@ -259,7 +197,7 @@ export function VoiceBar() {
       <div className="flex flex-col items-center gap-1 flex-shrink-0">
         {/* State label */}
         <span style={{ ...mono, color: stateColor, fontSize: '8px', letterSpacing: '0.1em' }}>
-          {stateLabel}
+          {aiState.toUpperCase()}
         </span>
 
         {/* Mic button */}
@@ -303,10 +241,7 @@ export function VoiceBar() {
               animate={{ rotate: 360 }}
               transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
             >
-              <div
-                className="w-4 h-4 rounded-full border-2 border-transparent"
-                style={{ borderTopColor: '#f59e0b', borderRightColor: '#f59e0b40' }}
-              />
+              <div className="w-4 h-4 rounded-full border-2 border-transparent" style={{ borderTopColor: '#f59e0b', borderRightColor: '#f59e0b40' }} />
             </motion.div>
           ) : (
             <Mic className="w-5 h-5" style={{ color: '#00f5ff' }} />

@@ -9,12 +9,12 @@ const mono = { fontFamily: 'Share Tech Mono, monospace' };
 const raj = { fontFamily: 'Rajdhani, sans-serif' };
 
 const GESTURES = [
-  { name: 'VUỐT PHẢI', desc: 'Điều hướng / Chọn', icon: '→', color: '#00f5ff' },
-  { name: 'VUỐT TRÁI', desc: 'Quay lại / Hủy bỏ', icon: '←', color: '#00f5ff' },
-  { name: 'HAI NGÓN TAY', desc: 'Cuộn trang / Thu phóng', icon: '✌', color: '#a855f7' },
-  { name: 'XÒE BÀN TAY', desc: 'Tạm dừng / Dừng AI', icon: '✋', color: '#f59e0b' },
-  { name: 'CHỤM NGÓN TAY', desc: 'Đóng bảng điều khiển', icon: '🤏', color: '#ef4444' },
-  { name: 'CHỈ LÊN TRÊN', desc: 'Kích hoạt giọng nói', icon: '☝', color: '#22c55e' },
+  { name: 'SWIPE RIGHT', desc: 'Navigate / Select', icon: '→', color: '#00f5ff' },
+  { name: 'SWIPE LEFT', desc: 'Go Back / Dismiss', icon: '←', color: '#00f5ff' },
+  { name: 'TWO FINGERS', desc: 'Scroll / Zoom', icon: '✌', color: '#a855f7' },
+  { name: 'OPEN PALM', desc: 'Pause / Stop AI', icon: '✋', color: '#f59e0b' },
+  { name: 'PINCH', desc: 'Close Panel', icon: '🤏', color: '#ef4444' },
+  { name: 'POINT UP', desc: 'Activate Voice', icon: '☝', color: '#22c55e' },
 ];
 
 // Simplified hand skeleton points
@@ -29,8 +29,8 @@ const HAND_POINTS = {
 };
 
 function HandSkeleton({ gesture }: { gesture: string }) {
-  const isOpenPalm = gesture === 'XÒE BÀN TAY';
-  const isPinch = gesture === 'CHỤM NGÓN TAY';
+  const isOpenPalm = gesture === 'OPEN PALM';
+  const isPinch = gesture === 'PINCH';
 
   return (
     <svg width="320" height="300" viewBox="0 0 320 300" fill="none">
@@ -106,13 +106,9 @@ export function GesturePanel() {
       if (Math.random() > 0.85) {
         const next = GESTURES[Math.floor(Math.random() * GESTURES.length)];
         setActiveGesture(next.name);
-        addNotification({
-          type: 'info',
-          title: 'Đã nhận diện Cử chỉ',
-          message: `${next.name} — ${next.desc}`,
-        });
+        addNotification({ type: 'info', title: 'Gesture Detected', message: `${next.name} — ${next.desc}` });
       }
-    }, 2500);
+    }, 2000);
     return () => clearInterval(interval);
   }, [gestureOpen]);
 
@@ -149,10 +145,10 @@ export function GesturePanel() {
                 <Hand className="w-5 h-5" style={{ color: '#00f5ff' }} />
                 <div>
                   <h2 style={{ ...orb, color: '#00f5ff', fontSize: '15px', letterSpacing: '0.15em', margin: 0 }}>
-                    ĐIỀU KHIỂN CỬ CHỈ KHÔNG GIAN
+                    GESTURE CONTROL
                   </h2>
                   <p style={{ ...mono, color: 'rgba(0,245,255,0.4)', fontSize: '10px', marginTop: 4 }}>
-                    THEO DÕI KHUNG XƯƠNG BÀN TAY v2.1 — CÔNG CỤ THỊ GIÁC NƠ-RON
+                    HAND SKELETON TRACKING v2.1 — NEURAL CV ENGINE
                   </p>
                 </div>
               </div>
@@ -215,7 +211,7 @@ export function GesturePanel() {
                   style={{ background: 'rgba(0,5,15,0.8)', border: '1px solid rgba(0,245,255,0.2)' }}
                 >
                   <Camera className="w-3 h-3" style={{ color: '#00f5ff' }} />
-                  <span style={{ ...mono, color: 'rgba(0,245,255,0.7)', fontSize: '9px' }}>CAMERA HOẠT ĐỘNG — 60fps</span>
+                  <span style={{ ...mono, color: 'rgba(0,245,255,0.7)', fontSize: '9px' }}>CAMERA ACTIVE — 60fps</span>
                   <motion.div animate={{ opacity: [1, 0.2, 1] }} transition={{ duration: 1, repeat: Infinity }} className="w-1.5 h-1.5 rounded-full" style={{ background: '#22c55e' }} />
                 </div>
 
@@ -246,14 +242,14 @@ export function GesturePanel() {
                   <div className="flex items-center justify-between mb-2">
                     <div className="flex items-center gap-2">
                       <Activity className="w-3.5 h-3.5" style={{ color: '#00f5ff' }} />
-                      <span style={{ ...mono, color: 'rgba(0,245,255,0.6)', fontSize: '10px' }}>TRẠNG THÁI NHẬN DIỆN</span>
+                      <span style={{ ...mono, color: 'rgba(0,245,255,0.6)', fontSize: '10px' }}>DETECTION STATUS</span>
                     </div>
                     <motion.div animate={{ opacity: [1, 0.3, 1] }} transition={{ duration: 0.8, repeat: Infinity }} className="w-1.5 h-1.5 rounded-full" style={{ background: detecting ? '#22c55e' : '#ef4444' }} />
                   </div>
 
                   {/* Confidence meter */}
                   <div className="flex items-center justify-between mb-1">
-                    <span style={{ ...mono, color: 'rgba(255,255,255,0.35)', fontSize: '9px' }}>ĐỘ TIN CẬY</span>
+                    <span style={{ ...mono, color: 'rgba(255,255,255,0.35)', fontSize: '9px' }}>CONFIDENCE</span>
                     <motion.span
                       key={Math.round(confidence)}
                       animate={{ opacity: [0.5, 1] }}
@@ -274,7 +270,7 @@ export function GesturePanel() {
 
                 {/* Current gesture details */}
                 <div className="rounded-xl p-3" style={{ background: `${currentGesture.color}08`, border: `1px solid ${currentGesture.color}25` }}>
-                  <p style={{ ...mono, color: 'rgba(255,255,255,0.4)', fontSize: '9px', marginBottom: 4 }}>CỬ CHỈ ĐANG KÍCH HOẠT</p>
+                  <p style={{ ...mono, color: 'rgba(255,255,255,0.4)', fontSize: '9px', marginBottom: 4 }}>ACTIVE GESTURE</p>
                   <p style={{ ...raj, color: currentGesture.color, fontSize: '18px', textShadow: `0 0 10px ${currentGesture.color}` }}>
                     {currentGesture.icon} {currentGesture.name}
                   </p>
@@ -286,7 +282,7 @@ export function GesturePanel() {
 
                 {/* Gesture reference */}
                 <div>
-                  <p style={{ ...mono, color: 'rgba(255,255,255,0.3)', fontSize: '9px', marginBottom: 8 }}>DANH MỤC CÁC CỬ CHỈ</p>
+                  <p style={{ ...mono, color: 'rgba(255,255,255,0.3)', fontSize: '9px', marginBottom: 8 }}>GESTURE REFERENCE</p>
                   <div className="flex flex-col gap-1.5">
                     {GESTURES.map(g => (
                       <motion.button
