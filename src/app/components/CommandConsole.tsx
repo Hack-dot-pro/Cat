@@ -9,6 +9,7 @@ import { sounds } from '../services/sound';
 import { openAIService, generateOfflineNeuralResponse } from '../services/openai';
 import { mcpService } from '../services/mcp';
 import { terminalService } from '../services/terminal';
+import { runPythonDataAnalysis, generateExcelWorkbook } from '../services/excelExporter';
 import { UploadedDocument } from './FilesPanel';
 
 const orb = { fontFamily: 'Orbitron, sans-serif' };
@@ -16,12 +17,12 @@ const mono = { fontFamily: 'Share Tech Mono, monospace' };
 const aptos = { fontFamily: "'Aptos Narrow', 'Aptos', sans-serif" };
 
 const SUGGESTIONS = [
+  'Phân tích dữ liệu doanh thu & xuất Excel',
+  'Chạy Python data_analysis.py',
   'Thư Ký Kim kiểm tra lịch trình',
   'Hệ thống hóa tài liệu giúp anh',
   'Chẩn đoán hệ thống Thư Ký Kim',
   'Giao thức công cụ MCP',
-  'Kiểm tra Gateway Xkiro',
-  'Bảo mật và mã hóa AES',
 ];
 
 export function CommandConsole() {
@@ -205,10 +206,46 @@ export function CommandConsole() {
       }
     }
 
+    // 3. Detect if Python Data Analysis or Excel Export is requested
+    const isDataAnalyticsIntent =
+      lower.includes('phân tích dữ liệu') ||
+      lower.includes('phân tích doanh thu') ||
+      lower.includes('xuất excel') ||
+      lower.includes('xuất file excel') ||
+      lower.includes('tạo file excel') ||
+      lower.includes('tạo bảng tính') ||
+      lower.includes('báo cáo excel') ||
+      lower.includes('báo cáo doanh thu') ||
+      lower.includes('data_analysis');
+
+    let analyticsContext = '';
+    if (isDataAnalyticsIntent) {
+      setStreamingText('📊 Thư Ký Kim đang chạy Python Data Engine để phân tích số liệu và tạo tệp Excel...');
+      try {
+        const fileData = attachedFile?.content || '';
+        const analysis = runPythonDataAnalysis({
+          dataset: fileData,
+          title: 'Báo Cáo Phân Tích Dữ Liệu Chuyên Sâu',
+          filename: 'Bao_Cao_Phan_Tich_Doanh_Thu.xlsx',
+        });
+        analyticsContext = `\n\n[KẾT QUẢ PHÂN TÍCH PYTHON & PANDAS / NUMPY]:
+- Tổng số bản ghi phân tích: ${analysis.summary.totalRecords}
+- Chỉ số thống kê (Mean, Min, Max, Std): ${JSON.stringify(analysis.summary.aggregates)}
+- Phát hiện chuyên sâu (Insights): ${analysis.insights.join('; ')}
+- Khuyến nghị chiến lược: ${analysis.recommendations.join('; ')}
+- Bảng dữ liệu:
+${analysis.markdownTable}
+- Đã xuất bản tệp Excel: "${analysis.excelFile.filename}" (${analysis.excelFile.sizeKb} KB)
+(Hãy phân tích, giải thích chi tiết bảng số liệu trên cho anh Vinh, kèm các nhận định sâu sắc và thông báo em đã tạo sẵn tệp Excel cho anh rồi ạ.)\n`;
+      } catch (e: any) {
+        analyticsContext = `\n\n[LỖI PHÂN TÍCH DỮ LIỆU]: ${e.message}\n`;
+      }
+    }
+
     // Prepare message history for OpenAI chat completions
-    let promptContent = userText + webContext + packageContext;
+    let promptContent = userText + webContext + packageContext + analyticsContext;
     if (attachedFile) {
-      promptContent = `[Tài liệu đính kèm: "${attachedFile.name}" (${(attachedFile.size / 1024).toFixed(1)} KB)]\n--- NỘI DUNG TÀI LIỆU ---\n${attachedFile.content.slice(0, 10000)}\n\n--- YÊU CẦU CỦA ${userName} (${userFullName}) ---\n${userText}${webContext}`;
+      promptContent = `[Tài liệu đính kèm: "${attachedFile.name}" (${(attachedFile.size / 1024).toFixed(1)} KB)]\n--- NỘI DUNG TÀI LIỆU ---\n${attachedFile.content.slice(0, 10000)}\n\n--- YÊU CẦU CỦA ${userName} (${userFullName}) ---\n${userText}${webContext}${analyticsContext}`;
     }
 
     const historyPayload = messages.slice(-8).map(m => ({

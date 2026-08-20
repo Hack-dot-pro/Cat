@@ -2,6 +2,7 @@
 // Supports external tools, JSON-RPC 2.0 servers, web browsing & live documentation research
 import { terminalService } from './terminal';
 import { cacheService } from './cache';
+import { runPythonDataAnalysis, generateExcelWorkbook } from './excelExporter';
 
 export interface MCPToolParameter {
   type: string;
@@ -606,6 +607,88 @@ export class MCPService {
           npm: npmResults,
           pypi: pypiResult,
           status: 'success',
+        };
+      },
+    });
+
+    // 14. Deep Python Data Analysis (Pandas/NumPy Logic & Insights)
+    this.registerTool({
+      name: 'kim_python_data_analyzer',
+      description: 'Phân tích dữ liệu chuyên sâu bằng logic Python (Pandas/NumPy), tính toán thống kê mô tả, phát hiện xu hướng, dị thường và tự động xuất file Excel (.xlsx).',
+      parameters: {
+        type: 'object',
+        properties: {
+          data: { type: 'string', description: 'Dữ liệu phân tích dạng CSV, JSON hoặc bảng dữ liệu văn bản' },
+          title: { type: 'string', description: 'Tiêu đề báo cáo phân tích' },
+          filename: { type: 'string', description: 'Tên tệp Excel xuất ra (vd: Bao_Cao_Doanh_Thu.xlsx)' },
+        },
+        required: ['data'],
+      },
+      serverId: builtinServer.id,
+      enabled: true,
+      isBuiltin: true,
+      handler: async (args: { data: string; title?: string; filename?: string }) => {
+        const analysis = runPythonDataAnalysis({
+          dataset: args.data,
+          title: args.title || 'Báo Cáo Phân Tích Dữ Liệu Chuyên Sâu',
+          filename: args.filename || 'Bao_Cao_Phan_Tich_Du_Lieu.xlsx',
+        });
+
+        return {
+          title: analysis.title,
+          summary: analysis.summary,
+          insights: analysis.insights,
+          recommendations: analysis.recommendations,
+          tableMarkdown: analysis.markdownTable,
+          excelFile: analysis.excelFile,
+          message: `Đã phân tích thành công ${analysis.summary.totalRecords} bản ghi và tạo tệp Excel "${analysis.excelFile.filename}" (${analysis.excelFile.sizeKb} KB).`,
+        };
+      },
+    });
+
+    // 15. Excel Spreadsheet Generator (.xlsx)
+    this.registerTool({
+      name: 'kim_excel_generator',
+      description: 'Tạo bảng tính Excel (.xlsx) chuyên nghiệp với tiêu đề, định dạng số, màu sắc và tự động tạo link tải về.',
+      parameters: {
+        type: 'object',
+        properties: {
+          filename: { type: 'string', description: 'Tên tệp Excel (vd: Danh_Sach_Du_An.xlsx)' },
+          sheetName: { type: 'string', description: 'Tên trang tính (Sheet name)' },
+          headers: { type: 'string', description: 'Danh sách cột, cách nhau bởi dấu phẩy (vd: STT, Tên dự án, Doanh thu, Trạng thái)' },
+          rowsJson: { type: 'string', description: 'Mảng 2 chiều chứa dữ liệu các dòng dạng JSON (vd: [["1", "Dự án A", 50000000, "Hoàn thành"]])' },
+        },
+        required: ['headers', 'rowsJson'],
+      },
+      serverId: builtinServer.id,
+      enabled: true,
+      isBuiltin: true,
+      handler: async (args: { filename?: string; sheetName?: string; headers: string; rowsJson: string }) => {
+        const headers = args.headers.split(',').map(h => h.trim());
+        let rows: Array<(string | number)[]> = [];
+        try {
+          rows = JSON.parse(args.rowsJson);
+        } catch {
+          rows = [args.rowsJson.split(',').map(r => r.trim())];
+        }
+
+        const excelRes = generateExcelWorkbook({
+          filename: args.filename || 'Du_Lieu_Xuat_Excel.xlsx',
+          sheets: [
+            {
+              name: args.sheetName || 'Dữ liệu',
+              headers,
+              rows,
+            },
+          ],
+        });
+
+        return {
+          success: true,
+          filename: excelRes.filename,
+          sizeKb: excelRes.sizeKb,
+          dataUrl: excelRes.dataUrl,
+          message: `Đã tạo tệp Excel "${excelRes.filename}" (${excelRes.sizeKb} KB) thành công.`,
         };
       },
     });

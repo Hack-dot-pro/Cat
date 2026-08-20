@@ -272,3 +272,4 @@ class KimVoiceEngine {
 }
 
 export const deepVoice = new KimVoiceEngine();
+export const kimVoiceEngine = deepVoice;

@@ -143,7 +143,7 @@ export function VoiceBar() {
         )}
       </motion.button>
 
-      {/* Voice Control Bar / Waveform */}
+      {/* Voice Control Bar / Status */}
       <AnimatePresence mode="wait">
         {!textMode ? (
           <motion.div
@@ -151,57 +151,33 @@ export function VoiceBar() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="flex-1 flex items-center gap-4 min-w-0"
+            className="flex-1 flex items-center justify-between gap-4 min-w-0"
           >
-            {/* Waveform */}
-            <div className="flex-1 flex items-center justify-center gap-1 h-12 overflow-hidden px-2">
-              {bars.map((h, i) => (
-                <motion.div
-                  key={i}
-                  animate={{ scaleY: h }}
-                  transition={{ duration: 0.07, ease: 'linear' }}
-                  className="rounded-full origin-center flex-shrink-0"
-                  style={{
-                    width: 3,
-                    height: '100%',
-                    background: isListening
-                      ? `rgba(34, 197, 94, ${0.4 + h * 0.6})`
-                      : isProcessing
-                      ? `rgba(245, 158, 11, ${0.3 + h * 0.5})`
-                      : isResponding
-                      ? `rgba(168, 85, 247, ${0.4 + h * 0.6})`
-                      : `rgba(0, 245, 255, ${0.12 + h * 0.3})`,
-                    boxShadow: isListening
-                      ? `0 0 6px rgba(34,197,94,${h * 0.7})`
-                      : isResponding
-                      ? `0 0 6px rgba(168,85,247,${h * 0.7})`
-                      : 'none',
-                  }}
-                />
-              ))}
-            </div>
-
-            {/* Live Transcript or Status */}
-            <div className="flex-shrink-0 max-w-xs flex flex-col items-end">
-              <div className="flex items-center gap-1.5">
-                <Radio className="w-3 h-3 text-cyan-400 animate-pulse" />
-                <span style={{ ...mono, color: stateColor, fontSize: '9px', letterSpacing: '0.08em' }}>
+            {/* Status & Mode Information */}
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-black/40 border border-white/5">
+                <Radio className="w-3.5 h-3.5 text-cyan-400 animate-pulse flex-shrink-0" />
+                <span style={{ ...mono, color: stateColor, fontSize: '11px', letterSpacing: '0.08em' }} className="truncate">
                   {stateLabel}
                 </span>
               </div>
+            </div>
+
+            {/* Live Transcript or Hint */}
+            <div className="flex-1 max-w-xl flex items-center justify-end">
               {speechTranscript ? (
                 <motion.div
                   initial={{ opacity: 0, y: 3 }}
                   animate={{ opacity: 1, y: 0 }}
-                  className="px-2.5 py-1 rounded-lg bg-black/60 border border-green-500/40 text-right mt-1 max-w-full truncate"
+                  className="px-3.5 py-1.5 rounded-xl bg-black/70 border border-green-500/40 text-right max-w-full truncate shadow-[0_0_12px_rgba(34,197,94,0.2)]"
                 >
-                  <span style={{ ...aptos, color: '#86efac', fontSize: '12px' }}>
+                  <span style={{ ...aptos, color: '#86efac', fontSize: '13px', fontWeight: 600 }}>
                     "{speechTranscript}"
                   </span>
                 </motion.div>
               ) : (
-                <span style={{ ...aptos, color: 'rgba(255,255,255,0.35)', fontSize: '11px', marginTop: 2 }}>
-                  Tự động gửi sau 1s ngắt giọng
+                <span style={{ ...aptos, color: 'rgba(255,255,255,0.4)', fontSize: '12px' }}>
+                  Nói lệnh trực tiếp hoặc gọi "Kim" / "Thư Ký Kim" (Tự động nhận diện sau 1s ngắt giọng)
                 </span>
               )}
             </div>
