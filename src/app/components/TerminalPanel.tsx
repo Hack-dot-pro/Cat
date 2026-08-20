@@ -284,6 +284,8 @@ export function TerminalPanel() {
               {[
                 { label: '📊 python data_analysis.py', cmd: 'python data_analysis.py' },
                 { label: '📈 analyze sales_data.csv', cmd: 'analyze sales_data.csv' },
+                { label: '💾 vba export', cmd: 'vba export format_and_total' },
+                { label: '📋 vba list', cmd: 'vba list' },
                 { label: 'node index.js', cmd: 'node index.js' },
                 { label: 'cargo run', cmd: 'cargo run' },
                 { label: 'cache stats', cmd: 'cache' },

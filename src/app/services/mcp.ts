@@ -4,6 +4,7 @@ import { terminalService } from './terminal';
 import { cacheService } from './cache';
 import { runPythonDataAnalysis, generateExcelWorkbook } from './excelExporter';
 import { parseExcelFile } from './excelReader';
+import { generateVbaModuleFile } from './vbaGenerator';
 
 export interface MCPToolParameter {
   type: string;
@@ -718,6 +719,42 @@ export class MCPService {
           textSummary: parsed.textSummary,
           fullMarkdown: parsed.fullMarkdown,
           message: `Đã giải mã thành công tệp Excel "${parsed.filename}" gồm ${parsed.totalSheets} sheet (${parsed.sheetNames.join(', ')}).`,
+        };
+      },
+    });
+
+    // 17. Excel VBA Module (.bas) Generator
+    this.registerTool({
+      name: 'kim_vba_generator',
+      description: 'Tạo mã nguồn Macro VBA chuyên nghiệp và đóng gói thành tệp Module VBA (.bas) sẵn sàng tải về và import trực tiếp vào Microsoft Excel qua Alt + F11.',
+      parameters: {
+        type: 'object',
+        properties: {
+          vbaCode: { type: 'string', description: 'Đoạn mã lập trình VBA (Sub / Function) cần đóng gói thành module' },
+          moduleName: { type: 'string', description: 'Tên Module VBA (vd: Module_BaoCao, Module_AutoFormat)' },
+          description: { type: 'string', description: 'Mô tả ngắn gọn chức năng của Macro VBA' },
+          filename: { type: 'string', description: 'Tên tệp xuất ra (vd: Macro_ThuKyKim.bas)' },
+        },
+        required: ['vbaCode'],
+      },
+      serverId: builtinServer.id,
+      enabled: true,
+      isBuiltin: true,
+      handler: async (args: { vbaCode: string; moduleName?: string; description?: string; filename?: string }) => {
+        const result = generateVbaModuleFile({
+          vbaCode: args.vbaCode,
+          moduleName: args.moduleName || 'Module_ThuKyKim',
+          description: args.description || 'Macro tự động hóa Excel tạo bởi Thư Ký Kim AI',
+          filename: args.filename,
+        });
+
+        return {
+          success: true,
+          filename: result.filename,
+          sizeKb: result.sizeKb,
+          dataUrl: result.dataUrl,
+          instructions: result.instructions,
+          message: `Đã tạo tệp Module VBA "${result.filename}" (${result.sizeKb} KB) thành công. Anh có thể tải về và import vào Excel qua phím tắt Alt + F11 -> File -> Import File.`,
         };
       },
     });

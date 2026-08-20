@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
-  Terminal, Send, Trash2, Download, Paperclip, FileText,
+  Terminal, Send, Trash2, Download, Paperclip, FileText, FileCode,
   X, Sparkles, RefreshCw, Layers, Cpu, CheckCircle, Volume2, Square, Package
 } from 'lucide-react';
 import { useApp, Message } from '../context/AppContext';
@@ -11,6 +11,7 @@ import { mcpService } from '../services/mcp';
 import { terminalService } from '../services/terminal';
 import { runPythonDataAnalysis, generateExcelWorkbook } from '../services/excelExporter';
 import { readUploadedFile } from '../services/excelReader';
+import { generateVbaModuleFile } from '../services/vbaGenerator';
 import { UploadedDocument } from './FilesPanel';
 
 const orb = { fontFamily: 'Orbitron, sans-serif' };
@@ -18,13 +19,33 @@ const mono = { fontFamily: 'Share Tech Mono, monospace' };
 const aptos = { fontFamily: "'Aptos Narrow', 'Aptos', sans-serif" };
 
 const SUGGESTIONS = [
+  'Tạo Module VBA tự động hóa Excel',
   'Phân tích dữ liệu doanh thu & xuất Excel',
   'Chạy Python data_analysis.py',
   'Thư Ký Kim kiểm tra lịch trình',
   'Hệ thống hóa tài liệu giúp anh',
-  'Chẩn đoán hệ thống Thư Ký Kim',
   'Giao thức công cụ MCP',
 ];
+
+function extractVbaInfo(text: string) {
+  const vbaMatch =
+    text.match(/```(?:vba|vb|basic)?\s*([\s\S]*?End\s+(?:Sub|Function)[\s\S]*?)```/i) ||
+    text.match(/(Sub\s+[a-zA-Z0-9_]+[\s\S]*?End\s+Sub)/i) ||
+    text.match(/(Function\s+[a-zA-Z0-9_]+[\s\S]*?End\s+Function)/i);
+
+  if (vbaMatch) {
+    const code = vbaMatch[1].trim();
+    const nameMatch = code.match(/(?:Sub|Function)\s+([a-zA-Z0-9_]+)/i);
+    const subName = nameMatch ? nameMatch[1] : 'ThuKyKim_Macro';
+    return {
+      hasVba: true,
+      vbaCode: code,
+      moduleName: `Module_${subName}`,
+      filename: `${subName}.bas`,
+    };
+  }
+  return { hasVba: false, vbaCode: '', moduleName: '', filename: '' };
+}
 
 export function CommandConsole() {
   const {
@@ -248,10 +269,28 @@ ${analysis.markdownTable}
       }
     }
 
+    // 4. Detect if Excel VBA Module generation is requested
+    const isVbaIntent =
+      lower.includes('vba') ||
+      lower.includes('macro') ||
+      lower.includes('.bas') ||
+      lower.includes('tạo module') ||
+      lower.includes('viết code vba') ||
+      lower.includes('tự động hóa excel');
+
+    let vbaContext = '';
+    if (isVbaIntent) {
+      vbaContext = `\n\n[HƯỚNG DẪN TẠO CODE VBA CỦA THƯ KÝ KIM]:
+- Khi viết mã VBA cho anh Vinh, hãy đóng gói toàn bộ code trong khối \`\`\`vba ... \`\`\` hoàn chỉnh.
+- Luôn có Option Explicit, khai báo kiểu biến tường minh (Long, Double, String, Worksheet, Range).
+- Thêm bẫy lỗi (On Error GoTo ErrorHandler) và tối ưu hóa hiệu năng (Application.ScreenUpdating = False, Application.Calculation = xlCalculationManual).
+- Giải thích tóm tắt cách thức hoạt động và nhắc anh Vinh bấm nút tải tệp .bas bên dưới để import vào Excel bằng [Alt + F11] -> [Ctrl + M] nhé ạ!\n`;
+    }
+
     // Prepare message history for OpenAI chat completions
-    let promptContent = userText + webContext + packageContext + analyticsContext;
+    let promptContent = userText + webContext + packageContext + analyticsContext + vbaContext;
     if (attachedFile) {
-      promptContent = `[Tài liệu đính kèm: "${attachedFile.name}" (${(attachedFile.size / 1024).toFixed(1)} KB)]\n--- NỘI DUNG TÀI LIỆU ---\n${attachedFile.content.slice(0, 10000)}\n\n--- YÊU CẦU CỦA ${userName} (${userFullName}) ---\n${userText}${webContext}${analyticsContext}`;
+      promptContent = `[Tài liệu đính kèm: "${attachedFile.name}" (${(attachedFile.size / 1024).toFixed(1)} KB)]\n--- NỘI DUNG TÀI LIỆU ---\n${attachedFile.content.slice(0, 10000)}\n\n--- YÊU CẦU CỦA ${userName} (${userFullName}) ---\n${userText}${webContext}${analyticsContext}${vbaContext}`;
     }
 
     const historyPayload = messages.slice(-8).map(m => ({
@@ -503,6 +542,64 @@ ${analysis.markdownTable}
                 >
                   {msg.text}
                 </div>
+
+                {/* VBA Module Download Card if VBA Code is detected */}
+                {(() => {
+                  if (msg.type !== 'ai') return null;
+                  const vba = extractVbaInfo(msg.text);
+                  if (!vba.hasVba) return null;
+
+                  return (
+                    <div
+                      className="mt-3 p-3 rounded-xl flex flex-col gap-2.5"
+                      style={{
+                        background: 'rgba(0, 18, 38, 0.75)',
+                        border: '1px solid rgba(0, 245, 255, 0.35)',
+                        boxShadow: '0 0 15px rgba(0, 245, 255, 0.08)',
+                      }}
+                    >
+                      <div className="flex items-center justify-between gap-2 flex-wrap">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <FileCode className="w-4 h-4 text-cyan-400 flex-shrink-0" />
+                          <span style={{ ...mono, color: '#00f5ff', fontSize: '11px', fontWeight: 600 }} className="truncate">
+                            TỆP MODULE VBA: {vba.filename}
+                          </span>
+                        </div>
+                        <button
+                          onClick={() => {
+                            sounds.playSuccess();
+                            const res = generateVbaModuleFile({
+                              vbaCode: vba.vbaCode,
+                              moduleName: vba.moduleName,
+                              filename: vba.filename,
+                            });
+                            res.download();
+                            addNotification({
+                              type: 'success',
+                              title: 'Đã tải Module VBA (.bas)',
+                              message: `Tệp "${vba.filename}" đã được tải về máy của anh thành công!`,
+                            });
+                          }}
+                          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 border border-cyan-500/40 text-xs font-mono cursor-pointer transition-all shadow-[0_0_10px_rgba(0,245,255,0.2)]"
+                          title="Tải về file .bas để import vào Excel"
+                        >
+                          <Download className="w-3.5 h-3.5" />
+                          <span>Tải về .bas</span>
+                        </button>
+                      </div>
+
+                      <div className="p-2.5 rounded-lg bg-black/50 border border-white/5 text-[11px] font-mono text-white/70 space-y-1">
+                        <p className="text-cyan-300 font-semibold flex items-center gap-1">
+                          <Sparkles className="w-3 h-3 text-cyan-400" />
+                          <span>Hướng dẫn Import vào Excel:</span>
+                        </p>
+                        <p>1. Mở Excel, nhấn <span className="text-pink-400 font-bold">[Alt + F11]</span> để mở cửa sổ VBA Editor.</p>
+                        <p>2. Chọn menu <span className="text-green-400 font-bold">File → Import File... (Ctrl + M)</span> → Chọn tệp <span className="text-cyan-300 font-bold">{vba.filename}</span> vừa tải về.</p>
+                        <p>3. Quay lại Excel, nhấn <span className="text-pink-400 font-bold">[Alt + F8]</span> và bấm <span className="text-yellow-400 font-bold">Run</span> để chạy Macro!</p>
+                      </div>
+                    </div>
+                  );
+                })()}
               </div>
             </motion.div>
           ))}

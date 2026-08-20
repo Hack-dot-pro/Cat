@@ -3,6 +3,7 @@
 import { cacheService } from './cache';
 import { kimVoiceEngine } from './deepVoice';
 import { runPythonDataAnalysis, generateExcelWorkbook } from './excelExporter';
+import { generateVbaModuleFile, VBA_PRESET_TEMPLATES } from './vbaGenerator';
 
 export interface InstalledLanguage {
   id: string;
@@ -137,8 +138,52 @@ Tháng 6,390000000,155000000,235000000,360,6.9
       'README.md',
       {
         name: 'README.md',
-        content: '# Thư Ký Kim Holographic Assistant OS\nHệ thống trợ lý ảo thông minh với Terminal Đa ngôn ngữ, Phân tích Dữ liệu Python, Web Browsing MCP và 4 Tầng Cache.\n',
-        size: 140,
+        content: '# Thư Ký Kim Holographic Assistant OS\nHệ thống trợ lý ảo thông minh với Terminal Đa ngôn ngữ, Phân tích Dữ liệu Python, Web Browsing MCP, Xuất Module VBA (.bas) và 4 Tầng Cache.\n',
+        size: 160,
+        updatedAt: new Date().toLocaleTimeString('vi-VN'),
+      },
+    ],
+    [
+      'excel_macros.bas',
+      {
+        name: 'excel_macros.bas',
+        content: `Attribute VB_Name = "Module_ThuKyKim"
+' ==============================================================================
+'  THƯ KÝ KIM AI — EXCEL VBA AUTOMATION MODULE (.BAS)
+'  Hướng dẫn: Nhấn [Alt + F11] -> Menu File -> Import File (Ctrl + M) -> Chọn file này
+' ==============================================================================
+Option Explicit
+
+Sub FormatBaoCaoTuDong()
+    Dim ws As Worksheet, lastRow As Long, lastCol As Long, rng As Range
+    On Error GoTo ErrorHandler
+    Application.ScreenUpdating = False
+    
+    Set ws = ActiveSheet
+    lastRow = ws.Cells(ws.Rows.Count, 1).End(xlUp).Row
+    lastCol = ws.Cells(1, ws.Columns.Count).End(xlToLeft).Column
+    
+    If lastRow < 2 Then Exit Sub
+    Set rng = ws.Range(ws.Cells(1, 1), ws.Cells(lastRow, lastCol))
+    
+    With ws.Range(ws.Cells(1, 1), ws.Cells(1, lastCol))
+        .Font.Bold = True
+        .Font.Color = RGB(255, 255, 255)
+        .Interior.Color = RGB(8, 145, 178)
+        .HorizontalAlignment = xlCenter
+        .RowHeight = 24
+    End With
+    
+    rng.Borders.LineStyle = xlContinuous
+    ws.Columns.AutoFit
+    Application.ScreenUpdating = True
+    MsgBox "Da dinh dang bang bieu thanh cong!", vbInformation, "Thu Ky Kim AI"
+    Exit Sub
+ErrorHandler:
+    Application.ScreenUpdating = True
+    MsgBox "Loi: " & Err.Description, vbCritical
+End Sub`,
+        size: 1150,
         updatedAt: new Date().toLocaleTimeString('vi-VN'),
       },
     ],
@@ -974,10 +1019,56 @@ ${analysis.recommendations.map(r => `• ${r}`).join('\n')}
       }
     }
 
-    // 12. Help
+    // 12. Excel VBA Module (.bas) Management
+    if (cmd === 'vba' || cmd === 'macro') {
+      const sub = args[0]?.toLowerCase();
+      if (sub === 'list' || !sub) {
+        const templates = Object.entries(VBA_PRESET_TEMPLATES)
+          .map(([k, v]) => `  • ${k.padEnd(20)}: ${v.name} — ${v.description}`)
+          .join('\n');
+        const out = `DANH SÁCH MẪU MODULE VBA (.BAS) SẴN CÓ:\n${templates}\n\n💡 Lệnh xuất: vba export <tên_mẫu> (vd: vba export format_and_total)`;
+        this.addLog('info', out);
+        this.speakResult('vba', 'Danh sách các mẫu Macro VBA sẵn có.');
+        return out;
+      }
+
+      if (sub === 'export' || sub === 'generate') {
+        const tplKey = args[1]?.toLowerCase() || 'format_and_total';
+        const tpl = VBA_PRESET_TEMPLATES[tplKey] || VBA_PRESET_TEMPLATES['format_and_total'];
+        const vbaRes = generateVbaModuleFile({
+          moduleName: `Module_${tpl.name}`,
+          description: tpl.description,
+          vbaCode: tpl.code,
+        });
+
+        // Save to virtual files
+        this.virtualFiles.set(vbaRes.filename, {
+          name: vbaRes.filename,
+          content: vbaRes.fullBasContent,
+          size: vbaRes.fullBasContent.length,
+          updatedAt: new Date().toLocaleTimeString('vi-VN'),
+        });
+        this.notify();
+
+        vbaRes.download();
+        const out = `✔ ĐÃ XUẤT MODULE VBA THÀNH CÔNG: "${vbaRes.filename}" (${vbaRes.sizeKb} KB)
+Trình duyệt đã tự động tải tệp ${vbaRes.filename} về máy của anh.
+
+HƯỚNG DẪN IMPORT VÀO EXCEL:
+1. Mở Excel, nhấn [Alt + F11] mở cửa sổ VBA Editor.
+2. Chọn Menu File -> Import File... (Ctrl + M) -> Chọn file "${vbaRes.filename}".
+3. Nhấn [Alt + F8] trong Excel để chạy Macro!`;
+        this.addLog('success', out);
+        this.speakResult('vba', `Đã xuất và tải về tệp Module VBA ${vbaRes.filename}.`);
+        return out;
+      }
+    }
+
+    // 13. Help
     if (cmd === 'help' || cmd === '?') {
       const out = `CÁC LỆNH THƯ KÝ KIM TERMINAL HỖ TRỢ:
   • python data_analysis.py / analyze   : Chạy phân tích dữ liệu & xuất file Excel (.xlsx)
+  • vba list / vba export <mẫu>          : Xuất và tải về Module Macro VBA (.bas)
   • python -c "<code>" / python <file>   : Chạy code hoặc script Python 3.12
   • node -e "<code>" / node <file.js>    : Chạy code JavaScript V8
   • cargo run / cargo add <crate>        : Biên dịch và chạy mã Rust
