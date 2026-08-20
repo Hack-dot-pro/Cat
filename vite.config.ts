@@ -33,4 +33,15 @@ export default defineConfig({
 
   // File types to support raw imports. Never add .css, .tsx, or .ts files to this.
   assetsInclude: ['**/*.svg', '**/*.csv'],
+
+  server: {
+    proxy: {
+      '/api/proxy': {
+        target: 'https://api.xkiro.com/v1',
+        changeOrigin: true,
+        rewrite: (p) => p.replace(/^\/api\/proxy/, '/chat/completions'),
+        secure: true,
+      },
+    },
+  },
 })

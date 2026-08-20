@@ -139,7 +139,6 @@ export function getStoredAIConfig(): AIConfig {
     return {
       ...DEFAULT_AI_CONFIG,
       ...parsed,
-      // If localStorage has empty apiKey but env has one, fallback to env
       apiKey: parsed.apiKey || envApiKey,
       baseUrl: parsed.baseUrl || envBaseUrl,
       model: parsed.model || envModel,
@@ -177,23 +176,35 @@ function normalizeUrl(baseUrl: string, endpoint: string = '/chat/completions'): 
   return `${cleanBase}${endpoint}`;
 }
 
+async function doFetch(url: string, headers: Record<string, string>, payload: any, signal?: AbortSignal) {
+  return await fetch(url, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify(payload),
+    signal,
+  });
+}
+
 export async function callOpenAIChatCompletion({
   messages,
   config,
   signal,
   onChunk,
 }: ChatCompletionOptions): Promise<string> {
-  const url = normalizeUrl(config.baseUrl, '/chat/completions');
+  const directUrl = normalizeUrl(config.baseUrl, '/chat/completions');
+  const proxyUrl = '/api/proxy';
+
+  const cleanKey = (config.apiKey || '').trim();
 
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
   };
 
-  if (config.apiKey && config.apiKey.trim()) {
-    headers['Authorization'] = `Bearer ${config.apiKey.trim()}`;
+  if (cleanKey) {
+    headers['Authorization'] = `Bearer ${cleanKey}`;
+    headers['x-api-key'] = cleanKey;
   }
 
-  // Extra headers for OpenRouter
   if (config.provider === 'openrouter' || config.baseUrl.includes('openrouter.ai')) {
     headers['HTTP-Referer'] = window.location.origin;
     headers['X-Title'] = 'CAT AI Operating System';
@@ -207,12 +218,37 @@ export async function callOpenAIChatCompletion({
     stream: Boolean(config.streaming && onChunk),
   };
 
-  const response = await fetch(url, {
-    method: 'POST',
-    headers,
-    body: JSON.stringify(payload),
-    signal,
-  });
+  let response: Response;
+
+  // For Xkiro or non-localhost endpoints, try direct first; if CORS error occurs, fallback to /api/proxy
+  const isXkiro = config.baseUrl.includes('xkiro.com');
+
+  if (isXkiro) {
+    // Xkiro does not support browser CORS preflight directly, route through Cloudflare Pages /api/proxy
+    try {
+      const proxyHeaders = { ...headers, 'x-target-url': directUrl };
+      response = await doFetch(proxyUrl, proxyHeaders, payload, signal);
+    } catch (proxyErr) {
+      // If local dev without proxy or direct try
+      response = await doFetch(directUrl, headers, payload, signal);
+    }
+  } else {
+    try {
+      response = await doFetch(directUrl, headers, payload, signal);
+    } catch (err: any) {
+      // If TypeError: Failed to fetch (CORS/network block), try via Cloudflare /api/proxy
+      if (err.name !== 'AbortError' && !config.baseUrl.includes('localhost')) {
+        try {
+          const proxyHeaders = { ...headers, 'x-target-url': directUrl };
+          response = await doFetch(proxyUrl, proxyHeaders, payload, signal);
+        } catch {
+          throw err;
+        }
+      } else {
+        throw err;
+      }
+    }
+  }
 
   if (!response.ok) {
     let errorDetail = '';
@@ -280,6 +316,17 @@ export async function testAIConnection(
   config: AIConfig
 ): Promise<{ success: boolean; latencyMs: number; message: string; modelUsed: string }> {
   const start = performance.now();
+
+  const isKeyRequired = config.provider !== 'ollama';
+  if (isKeyRequired && !config.apiKey?.trim()) {
+    return {
+      success: false,
+      latencyMs: 0,
+      message: 'Vui lòng nhập API Key trước khi kiểm tra kết nối.',
+      modelUsed: config.model,
+    };
+  }
+
   try {
     const reply = await callOpenAIChatCompletion({
       messages: [
@@ -292,15 +339,19 @@ export async function testAIConnection(
     return {
       success: true,
       latencyMs: latency,
-      message: `Connection verified! Response: "${reply.trim()}"`,
+      message: `Kết nối thành công! Phản hồi: "${reply.trim()}"`,
       modelUsed: config.model,
     };
   } catch (err: any) {
     const latency = Math.round(performance.now() - start);
+    let errMsg = err.message || 'Kết nối thất bại';
+    if (errMsg.includes('Failed to fetch')) {
+      errMsg = 'Không thể kết nối đến máy chủ API (Lỗi mạng hoặc CORS). Đã kích hoạt Cloudflare Proxy.';
+    }
     return {
       success: false,
       latencyMs: latency,
-      message: err.message || 'Connection failed',
+      message: errMsg,
       modelUsed: config.model,
     };
   }
