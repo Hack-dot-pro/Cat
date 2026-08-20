@@ -8,11 +8,11 @@ class SoundSystem {
 
   constructor() {
     try {
-      const soundPref = localStorage.getItem('cat_sound_enabled');
+      const soundPref = localStorage.getItem('kim_sound_enabled') || localStorage.getItem('cat_sound_enabled');
       if (soundPref !== null) {
         this.enabled = soundPref === 'true';
       }
-      const volPref = localStorage.getItem('cat_sound_volume');
+      const volPref = localStorage.getItem('kim_sound_volume') || localStorage.getItem('cat_sound_volume');
       if (volPref !== null) {
         this.volume = parseFloat(volPref);
       }
@@ -41,7 +41,7 @@ class SoundSystem {
   public setEnabled(enabled: boolean) {
     this.enabled = enabled;
     try {
-      localStorage.setItem('cat_sound_enabled', String(enabled));
+      localStorage.setItem('kim_sound_enabled', String(enabled));
     } catch {}
   }
 
@@ -52,7 +52,7 @@ class SoundSystem {
   public setVolume(vol: number) {
     this.volume = Math.max(0, Math.min(1, vol));
     try {
-      localStorage.setItem('cat_sound_volume', String(this.volume));
+      localStorage.setItem('kim_sound_volume', String(this.volume));
     } catch {}
   }
 

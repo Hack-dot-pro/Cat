@@ -85,7 +85,7 @@ interface AppContextType {
   speakText: (text: string) => void;
   stopSpeaking: () => void;
 
-  // Speech Recognition & Wake Word ("CAT") States
+  // Speech Recognition & Wake Word ("Kim" / "Thư Ký Kim") States
   isListeningVoice: boolean;
   speechTranscript: string;
   startVoiceRecognition: (continuous?: boolean) => boolean;
@@ -197,7 +197,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [voicePitch, setVoicePitchState] = useState<number>(() => deepVoice.getPitch());
   const [voiceRate, setVoiceRateState] = useState<number>(() => deepVoice.getRate());
 
-  // Speech Recognition & Wake Word ("CAT") States
+  // Speech Recognition & Wake Word ("Kim" / "Thư Ký Kim") States
   const [isListeningVoice, setIsListeningVoice] = useState<boolean>(false);
   const [speechTranscript, setSpeechTranscript] = useState<string>('');
   const [wakeWordEnabled, setWakeWordEnabled] = useState<boolean>(true);

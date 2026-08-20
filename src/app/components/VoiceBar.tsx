@@ -226,7 +226,7 @@ export function VoiceBar() {
             border: `2px solid ${stateColor}`,
             boxShadow: `0 0 20px ${stateColor}40, 0 0 40px ${stateColor}15`,
           }}
-          title={isListening ? 'Nhấn để tắt Micro' : 'Nhấn để bật Micro hoặc nói "CAT"'}
+          title={isListening ? 'Nhấn để tắt Micro' : 'Nhấn để bật Micro hoặc gọi "Kim" / "Thư Ký Kim"'}
         >
           {/* Animated pulse rings */}
           {isListening && (
