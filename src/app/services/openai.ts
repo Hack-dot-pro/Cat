@@ -2,6 +2,8 @@
 // Compatible with Xkiro AI (https://api.xkiro.com/v1), OpenAI, OpenRouter, DeepSeek, Groq, Ollama & Custom Providers
 // Includes Multi-API Fallback Pool & Automatic Failover Engine
 
+import { cacheService } from './cache';
+
 export type AIProvider = 'xkiro' | 'openai' | 'openrouter' | 'deepseek' | 'groq' | 'ollama' | 'custom';
 
 export interface ProviderPreset {
@@ -458,6 +460,21 @@ export class OpenAIService {
       fallbackEndpoints,
     } = this.settings;
 
+    // 1. Check 4-Tier High Speed Cache
+    const lastUserMessage = messages.filter(m => m.role === 'user').pop()?.content;
+    if (lastUserMessage) {
+      const cached = cacheService.getAICache(lastUserMessage);
+      if (cached) {
+        this.lastUsedEndpointInfo = {
+          name: 'L1/L2 High-Speed Neural Cache (< 2ms)',
+          isFallback: false,
+        };
+        onChunk?.(cached, cached);
+        onDone?.(cached);
+        return cached;
+      }
+    }
+
     // Candidate list: Primary first, then enabled fallback endpoints in priority order
     interface Candidate {
       id: string;
@@ -526,6 +543,11 @@ export class OpenAIService {
           name: candidate.name,
           isFallback: !candidate.isPrimary,
         };
+
+        // Cache the successful completion
+        if (lastUserMessage && result) {
+          cacheService.setAICache(lastUserMessage, result);
+        }
 
         return result;
       } catch (err: any) {

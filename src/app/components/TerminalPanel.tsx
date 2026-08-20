@@ -285,10 +285,11 @@ export function TerminalPanel() {
                 { label: 'python main.py', cmd: 'python main.py' },
                 { label: 'node index.js', cmd: 'node index.js' },
                 { label: 'cargo run', cmd: 'cargo run' },
+                { label: 'cache stats', cmd: 'cache' },
+                { label: 'cache benchmark', cmd: 'cache benchmark' },
                 { label: 'tool list', cmd: 'tool list' },
                 { label: 'pkg list', cmd: 'pkg list' },
                 { label: 'neofetch', cmd: 'neofetch' },
-                { label: 'apt update', cmd: 'apt update' },
                 { label: 'clear', cmd: 'clear' },
               ].map(item => (
                 <button

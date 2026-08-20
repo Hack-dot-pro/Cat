@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
 import { AreaChart, Area, XAxis, YAxis, ResponsiveContainer, Tooltip } from 'recharts';
 import { Activity, Cpu, Database, Wifi, Thermometer, Zap } from 'lucide-react';
+import { cacheService, CacheStats } from '../services/cache';
 
 const orb = { fontFamily: 'Orbitron, sans-serif' };
 const mono = { fontFamily: 'Share Tech Mono, monospace' };
@@ -94,8 +95,13 @@ export function SystemMonitor() {
   const [gpu, setGpu] = useState(() => initData(28, 15));
   const [temp, setTemp] = useState(54);
   const [uptime, setUptime] = useState(14398);
+  const [cacheStats, setCacheStats] = useState<CacheStats>(() => cacheService.getStats());
 
   useEffect(() => {
+    const unsub = cacheService.subscribe(() => {
+      setCacheStats(cacheService.getStats());
+    });
+
     const interval = setInterval(() => {
       const t = Date.now();
       setCpu(p => [...p.slice(1), { t, v: generate(42, 18) }]);
@@ -105,7 +111,11 @@ export function SystemMonitor() {
       setTemp(generate(54, 4));
       setUptime(s => s + 2);
     }, 2000);
-    return () => clearInterval(interval);
+
+    return () => {
+      clearInterval(interval);
+      unsub();
+    };
   }, []);
 
   const fmtUptime = (s: number) => {
@@ -196,19 +206,77 @@ export function SystemMonitor() {
         ))}
       </div>
 
+      {/* 4-Tier High-Performance Cache Card */}
+      <div
+        className="rounded-xl p-3 flex-shrink-0 flex flex-col gap-2"
+        style={{
+          background: 'rgba(0, 15, 30, 0.65)',
+          border: '1px solid rgba(0, 245, 255, 0.25)',
+          boxShadow: '0 0 15px rgba(0, 245, 255, 0.08)',
+        }}
+      >
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-1.5">
+            <Zap className="w-3.5 h-3.5 text-cyan-400" />
+            <span style={{ ...orb, color: '#00f5ff', fontSize: '10px', letterSpacing: '0.08em' }}>
+              BỘ ĐỆM 4 TẦNG CACHE
+            </span>
+          </div>
+          <button
+            onClick={() => cacheService.clearAll()}
+            className="px-2 py-0.5 rounded text-[10px] font-mono bg-red-500/10 hover:bg-red-500/20 text-red-300 border border-red-500/30 cursor-pointer"
+            title="Xóa sạch toàn bộ Cache"
+          >
+            Làm mới
+          </button>
+        </div>
+
+        <div className="grid grid-cols-3 gap-1.5 text-center">
+          <div className="p-1.5 rounded bg-black/40 border border-white/5 flex flex-col">
+            <span style={{ ...orb, color: '#22c55e', fontSize: '12px' }}>
+              {cacheStats.hitRatePercent}%
+            </span>
+            <span style={{ ...mono, color: 'rgba(255,255,255,0.4)', fontSize: '8px' }}>
+              HIT RATE
+            </span>
+          </div>
+          <div className="p-1.5 rounded bg-black/40 border border-white/5 flex flex-col">
+            <span style={{ ...orb, color: '#a855f7', fontSize: '12px' }}>
+              {cacheStats.savedTokens > 999 ? `${(cacheStats.savedTokens / 1000).toFixed(1)}k` : cacheStats.savedTokens}
+            </span>
+            <span style={{ ...mono, color: 'rgba(255,255,255,0.4)', fontSize: '8px' }}>
+              SAVED TOKENS
+            </span>
+          </div>
+          <div className="p-1.5 rounded bg-black/40 border border-white/5 flex flex-col">
+            <span style={{ ...orb, color: '#00f5ff', fontSize: '12px' }}>
+              {cacheStats.l1ItemCount + cacheStats.l2ItemCount}
+            </span>
+            <span style={{ ...mono, color: 'rgba(255,255,255,0.4)', fontSize: '8px' }}>
+              ENTRIES
+            </span>
+          </div>
+        </div>
+
+        <div className="flex items-center justify-between text-[9px] font-mono text-white/50 pt-1 border-t border-white/5">
+          <span>L1 RAM: {(cacheStats.totalMemoryBytes / 1024).toFixed(1)} KB</span>
+          <span className="text-cyan-300">Độ trễ: &lt; 2ms</span>
+        </div>
+      </div>
+
       {/* Process list */}
       <div
         className="rounded-xl p-3 flex-shrink-0"
         style={{ background: 'rgba(0,8,20,0.5)', border: '1px solid rgba(0,245,255,0.08)' }}
       >
-        <div className="flex items-center justify-between mb-2">
+        <div className="flex items-center justify-between mb-1.5">
           <span style={{ ...mono, color: 'rgba(0,245,255,0.6)', fontSize: '10px' }}>TOP PROCESSES</span>
         </div>
         {[
-          { name: 'nexus-core.exe', cpu: 12.4, mem: 842 },
+          { name: 'kim-core.exe', cpu: 12.4, mem: 842 },
+          { name: 'cache-engine', cpu: 0.8, mem: 128 },
           { name: 'neural-net.dll', cpu: 8.1, mem: 1240 },
-          { name: 'voice-engine', cpu: 4.2, mem: 256 },
-          { name: 'render-host', cpu: 3.8, mem: 512 },
+          { name: 'voice-synth', cpu: 3.2, mem: 256 },
         ].map(p => (
           <div key={p.name} className="flex items-center justify-between py-1" style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
             <span style={{ ...mono, color: 'rgba(255,255,255,0.5)', fontSize: '9px' }}>{p.name}</span>

@@ -1,6 +1,7 @@
 // Model Context Protocol (MCP) Client & Tool Hub for Thư Ký Kim
 // Supports external tools, JSON-RPC 2.0 servers, web browsing & live documentation research
 import { terminalService } from './terminal';
+import { cacheService } from './cache';
 
 export interface MCPToolParameter {
   type: string;
@@ -83,6 +84,17 @@ export class MCPService {
       handler: async (args: { query: string; category?: string; limit?: string }) => {
         const rawQ = args.query.trim();
         const limitNum = parseInt(args.limit || '6', 10);
+
+        // Check Tier 3 TTL Cache
+        const cached = cacheService.getWebCache(rawQ, 'search');
+        if (cached) {
+          return {
+            ...cached,
+            cached: true,
+            cacheTier: 'L3_WEB_TTL (< 1ms)',
+          };
+        }
+
         const searchResults: Array<{ title: string; snippet: string; url: string; source: string }> = [];
 
         // 1. Wikipedia Deep Content Search (action=query&list=search)
@@ -168,12 +180,17 @@ export class MCPService {
           });
         }
 
-        return {
+        const outputData = {
           query: rawQ,
           totalFound: searchResults.length,
           results: searchResults.slice(0, limitNum),
           retrievedAt: new Date().toLocaleString('vi-VN'),
         };
+
+        // Cache for 30 minutes in Tier 3
+        cacheService.setWebCache(rawQ, outputData, 'search', 30 * 60 * 1000);
+
+        return outputData;
       },
     });
 
