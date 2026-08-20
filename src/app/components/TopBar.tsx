@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
 import {
   Wifi, Shield, Cpu, Settings, Grid, Hand, Bell,
-  Activity, Volume2, VolumeX, FileText, Wrench, User, Bot
+  Activity, Volume2, VolumeX, FileText, Wrench, User, Bot, Terminal
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { sounds } from '../services/sound';
@@ -19,6 +19,7 @@ export function TopBar() {
     setGestureOpen,
     setFilesOpen,
     setMcpOpen,
+    setTerminalOpen,
     aiState,
     addNotification,
     soundEnabled,
@@ -245,6 +246,21 @@ export function TopBar() {
           title="Công cụ MCP (Model Context Protocol)"
         >
           <Wrench className="w-4 h-4 text-purple-400" />
+        </motion.button>
+
+        {/* Holographic Terminal Button */}
+        <motion.button
+          whileHover={{ scale: 1.15 }}
+          whileTap={{ scale: 0.9 }}
+          onClick={() => {
+            sounds.playClick();
+            setTerminalOpen(true);
+          }}
+          className="w-8 h-8 rounded-lg flex items-center justify-center cursor-pointer"
+          style={{ background: 'rgba(0,245,255,0.08)', border: '1px solid rgba(0,245,255,0.3)' }}
+          title="Terminal & Trình tải Thư viện"
+        >
+          <Terminal className="w-4 h-4 text-cyan-400" />
         </motion.button>
 
         {[

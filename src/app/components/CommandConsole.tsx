@@ -2,12 +2,13 @@ import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   Terminal, Send, Trash2, Download, Paperclip, FileText,
-  X, Sparkles, RefreshCw, Layers, Cpu, CheckCircle, Volume2, Square
+  X, Sparkles, RefreshCw, Layers, Cpu, CheckCircle, Volume2, Square, Package
 } from 'lucide-react';
 import { useApp, Message } from '../context/AppContext';
 import { sounds } from '../services/sound';
 import { openAIService } from '../services/openai';
 import { mcpService } from '../services/mcp';
+import { terminalService } from '../services/terminal';
 import { UploadedDocument } from './FilesPanel';
 
 const orb = { fontFamily: 'Orbitron, sans-serif' };
@@ -35,6 +36,7 @@ export function CommandConsole() {
     setGestureOpen,
     setFilesOpen,
     setMcpOpen,
+    setTerminalOpen,
     addNotification,
     uploadedFiles,
     setUploadedFiles,
@@ -95,6 +97,8 @@ export function CommandConsole() {
     if (lower.includes('scan') || lower.includes('quét')) {
       sounds.playScan();
       setTimeout(() => setScanningActive(true), 800);
+    } else if (lower.includes('terminal') || lower.includes('dòng lệnh') || lower.includes('cmd') || lower.includes('cli')) {
+      setTimeout(() => setTerminalOpen(true), 800);
     } else if (lower.includes('cài đặt') || lower.includes('settings')) {
       setTimeout(() => setSettingsOpen(true), 800);
     } else if (lower.includes('ứng dụng') || lower.includes('app')) {
@@ -158,8 +162,51 @@ export function CommandConsole() {
       }
     }
 
+    // 2. Detect if Package Installation or Terminal Command is requested
+    const isInstallIntent =
+      lower.includes('cài đặt thư viện') ||
+      lower.includes('cài thư viện') ||
+      lower.includes('tải thư viện') ||
+      lower.includes('cài gói') ||
+      lower.includes('tải gói') ||
+      lower.includes('npm install') ||
+      lower.includes('npm i ') ||
+      lower.includes('pip install') ||
+      lower.includes('yarn add') ||
+      lower.includes('pnpm add') ||
+      lower.includes('git clone');
+
+    let packageContext = '';
+
+    if (isInstallIntent) {
+      setStreamingText('📦 Thư Ký Kim đang tải và cài đặt thư viện vào hệ thống...');
+      let manager: 'npm' | 'pip' | 'cdn' | 'git' = 'npm';
+      if (lower.includes('pip') || lower.includes('python')) {
+        manager = 'pip';
+      } else if (lower.includes('git clone')) {
+        manager = 'git';
+      } else if (lower.includes('cdn')) {
+        manager = 'cdn';
+      }
+
+      const cleanPkg = userText
+        .replace(/^(kim|thư ký kim|em kim|kim ơi)[,\s]*/i, '')
+        .replace(/^(cài đặt thư viện|cài thư viện|tải thư viện|cài gói|tải gói|cài|tải|npm i|npm install|pip install|yarn add|pnpm add)[,\s]*/i, '')
+        .replace(/(giúp anh|cho anh|vào hệ thống|nhé|nha|về|ạ)$/i, '')
+        .trim();
+
+      if (cleanPkg) {
+        try {
+          const installRes = await terminalService.installPackage(cleanPkg, manager, 'latest');
+          packageContext = `\n\n[KẾT QUẢ CÀI ĐẶT THƯ VIỆN QUA TERMINAL]\nTrạng thái: ${installRes.success ? 'Thành công' : 'Thất bại'}\nThông điệp: ${installRes.message}\nThông tin gói: ${JSON.stringify(installRes.package || {})}\n(Hãy thông báo kết quả cài đặt và hướng dẫn chi tiết cách import / sử dụng thư viện này cho anh Vinh nhé.)\n`;
+        } catch (e: any) {
+          packageContext = `\n\n[LỖI CÀI ĐẶT THƯ VIỆN]: ${e.message}\n`;
+        }
+      }
+    }
+
     // Prepare message history for OpenAI chat completions
-    let promptContent = userText + webContext;
+    let promptContent = userText + webContext + packageContext;
     if (attachedFile) {
       promptContent = `[Tài liệu đính kèm: "${attachedFile.name}" (${(attachedFile.size / 1024).toFixed(1)} KB)]\n--- NỘI DUNG TÀI LIỆU ---\n${attachedFile.content.slice(0, 10000)}\n\n--- YÊU CẦU CỦA ${userName} (${userFullName}) ---\n${userText}${webContext}`;
     }
@@ -261,6 +308,19 @@ export function CommandConsole() {
           </span>
         </div>
         <div className="flex items-center gap-1.5">
+          <motion.button
+            whileHover={{ scale: 1.1 }}
+            whileTap={{ scale: 0.9 }}
+            onClick={() => {
+              sounds.playClick();
+              setTerminalOpen(true);
+            }}
+            className="p-1.5 rounded-lg cursor-pointer"
+            style={{ background: 'rgba(0,245,255,0.08)', border: '1px solid rgba(0,245,255,0.25)' }}
+            title="Mở Holographic Terminal & Trình tải Gói"
+          >
+            <Package className="w-3.5 h-3.5 text-cyan-400" />
+          </motion.button>
           <motion.button
             whileHover={{ scale: 1.1 }}
             whileTap={{ scale: 0.9 }}

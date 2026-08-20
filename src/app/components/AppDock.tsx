@@ -23,7 +23,7 @@ const DOCK_APPS = [
 ];
 
 export function AppDock() {
-  const { setAppGridOpen, setSettingsOpen, setFilesOpen, setMcpOpen, setRightPanel, addNotification } = useApp();
+  const { setAppGridOpen, setSettingsOpen, setFilesOpen, setMcpOpen, setTerminalOpen, setRightPanel, addNotification } = useApp();
   const [hovered, setHovered] = useState<string | null>(null);
   const [tooltip, setTooltip] = useState<string | null>(null);
 
@@ -36,7 +36,7 @@ export function AppDock() {
     } else if (app.id === 'mcp') {
       setMcpOpen(true);
     } else if (app.id === 'terminal') {
-      setRightPanel('console');
+      setTerminalOpen(true);
     } else {
       addNotification({ type: 'info', title: `Khởi chạy ${app.name}`, message: `Đang kết nối dịch vụ ${app.name}...` });
     }

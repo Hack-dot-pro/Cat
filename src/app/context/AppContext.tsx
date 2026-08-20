@@ -52,6 +52,8 @@ interface AppContextType {
   setFilesOpen: (v: boolean) => void;
   mcpOpen: boolean;
   setMcpOpen: (v: boolean) => void;
+  terminalOpen: boolean;
+  setTerminalOpen: (v: boolean) => void;
   leftPanel: 'monitor' | 'memory';
   setLeftPanel: (v: 'monitor' | 'memory') => void;
   rightPanel: 'console' | 'search';
@@ -163,6 +165,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [gestureOpen, setGestureOpen] = useState(false);
   const [filesOpen, setFilesOpen] = useState(false);
   const [mcpOpen, setMcpOpen] = useState(false);
+  const [terminalOpen, setTerminalOpen] = useState(false);
   const [leftPanel, setLeftPanel] = useState<'monitor' | 'memory'>('monitor');
   const [rightPanel, setRightPanel] = useState<'console' | 'search'>('console');
   const [memories] = useState<MemoryItem[]>(initialMemories);
@@ -395,6 +398,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       gestureOpen, setGestureOpen,
       filesOpen, setFilesOpen,
       mcpOpen, setMcpOpen,
+      terminalOpen, setTerminalOpen,
       leftPanel, setLeftPanel,
       rightPanel, setRightPanel,
       memories,

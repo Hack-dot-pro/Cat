@@ -19,6 +19,7 @@ import { GesturePanel } from './components/GesturePanel';
 import { NotificationSystem } from './components/NotificationSystem';
 import { FilesPanel } from './components/FilesPanel';
 import { MCPPanel } from './components/MCPPanel';
+import { TerminalPanel } from './components/TerminalPanel';
 import { sounds } from './services/sound';
 
 const orb = { fontFamily: 'Orbitron, sans-serif' };
@@ -216,6 +217,7 @@ function MainLayout() {
       <GesturePanel />
       <FilesPanel />
       <MCPPanel />
+      <TerminalPanel />
 
       {/* Notifications */}
       <NotificationSystem />

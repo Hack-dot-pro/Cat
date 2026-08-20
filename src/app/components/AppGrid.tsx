@@ -52,7 +52,7 @@ const APPS = [
 const CATEGORIES = ['Tất cả', 'Hệ thống', 'AI', 'Đa phương tiện', 'Liên lạc', 'Công cụ'];
 
 export function AppGrid() {
-  const { appGridOpen, setAppGridOpen, setSettingsOpen, setFilesOpen, setMcpOpen, setRightPanel, addNotification } = useApp();
+  const { appGridOpen, setAppGridOpen, setSettingsOpen, setFilesOpen, setMcpOpen, setTerminalOpen, setRightPanel, addNotification } = useApp();
   const [activeCategory, setActiveCategory] = useState('Tất cả');
   const [hoveredApp, setHoveredApp] = useState<string | null>(null);
 
@@ -70,7 +70,7 @@ export function AppGrid() {
       setMcpOpen(true);
       setAppGridOpen(false);
     } else if (app.id === 'terminal') {
-      setRightPanel('console');
+      setTerminalOpen(true);
       setAppGridOpen(false);
     } else {
       addNotification({ type: 'info', title: `Đã mở ${app.name}`, message: `${app.name} đang được khởi tạo...` });

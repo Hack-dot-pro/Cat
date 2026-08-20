@@ -1,5 +1,6 @@
 // Model Context Protocol (MCP) Client & Tool Hub for Thư Ký Kim
 // Supports external tools, JSON-RPC 2.0 servers, web browsing & live documentation research
+import { terminalService } from './terminal';
 
 export interface MCPToolParameter {
   type: string;
@@ -482,6 +483,97 @@ export class MCPService {
         } catch (e: any) {
           throw new Error(`Không thể nạp URL "${args.url}": ${e.message}`);
         }
+      },
+    });
+
+    // 11. Dynamic Package Installer (NPM, PyPI, CDN, Git)
+    this.registerTool({
+      name: 'kim_package_installer',
+      description: 'Tải và cài đặt bất kỳ thư viện lập trình nào (NPM, PyPI/Python, CDN, Git) vào môi trường runtime của Thư Ký Kim.',
+      parameters: {
+        type: 'object',
+        properties: {
+          packageName: { type: 'string', description: 'Tên gói thư viện cần tải (vd: axios, three, pandas, lodash, requests, chart.js)' },
+          manager: { type: 'string', enum: ['npm', 'pip', 'cdn', 'git'], description: 'Trình quản lý gói (mặc định npm)' },
+          version: { type: 'string', description: 'Phiên bản cần cài (mặc định latest)' },
+        },
+        required: ['packageName'],
+      },
+      serverId: builtinServer.id,
+      enabled: true,
+      isBuiltin: true,
+      handler: async (args: { packageName: string; manager?: 'npm' | 'pip' | 'cdn' | 'git'; version?: string }) => {
+        const mgr = args.manager || 'npm';
+        const ver = args.version || 'latest';
+        const res = await terminalService.installPackage(args.packageName, mgr, ver);
+        return {
+          packageName: args.packageName,
+          manager: mgr,
+          version: ver,
+          status: res.success ? 'installed_successfully' : 'failed',
+          message: res.message,
+          packageInfo: res.package,
+        };
+      },
+    });
+
+    // 12. Holographic Terminal Command Executor
+    this.registerTool({
+      name: 'kim_terminal_exec',
+      description: 'Thực thi các lệnh shell / terminal trực tiếp (vd: npm install, pip install, git clone, pkg list, sysinfo, curl, v.v.) và trả về output log.',
+      parameters: {
+        type: 'object',
+        properties: {
+          command: { type: 'string', description: 'Câu lệnh shell / terminal cần thực thi' },
+        },
+        required: ['command'],
+      },
+      serverId: builtinServer.id,
+      enabled: true,
+      isBuiltin: true,
+      handler: async (args: { command: string }) => {
+        const output = await terminalService.executeCommand(args.command);
+        return {
+          command: args.command,
+          output,
+          executedAt: new Date().toLocaleString('vi-VN'),
+        };
+      },
+    });
+
+    // 13. Package & Library Registry Search
+    this.registerTool({
+      name: 'kim_library_search',
+      description: 'Tra cứu thông tin, phiên bản mới nhất, lượt tải và đặc tả thư viện trên kho lưu trữ NPM hoặc PyPI.',
+      parameters: {
+        type: 'object',
+        properties: {
+          query: { type: 'string', description: 'Từ khóa tên thư viện cần tra cứu' },
+          registry: { type: 'string', enum: ['npm', 'pip', 'all'], description: 'Kho lưu trữ gói cần tra cứu' },
+        },
+        required: ['query'],
+      },
+      serverId: builtinServer.id,
+      enabled: true,
+      isBuiltin: true,
+      handler: async (args: { query: string; registry?: 'npm' | 'pip' | 'all' }) => {
+        const reg = args.registry || 'all';
+        let npmResults: any[] = [];
+        let pypiResult: any = null;
+
+        if (reg === 'npm' || reg === 'all') {
+          npmResults = await terminalService.searchNpmPackage(args.query);
+        }
+        if (reg === 'pip' || reg === 'all') {
+          pypiResult = await terminalService.searchPypiPackage(args.query);
+        }
+
+        return {
+          query: args.query,
+          npm: npmResults,
+          pypi: pypiResult,
+          status: 'success',
+        };
       },
     });
   }
