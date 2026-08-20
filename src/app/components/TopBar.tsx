@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
-import { Wifi, Shield, Cpu, Settings, Grid, Hand, Bell, Activity, Volume2, VolumeX } from 'lucide-react';
+import { Wifi, Shield, Cpu, Settings, Grid, Hand, Bell, Activity, Volume2, VolumeX, Bot } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { sounds } from '../services/sound';
 
@@ -18,6 +18,10 @@ export function TopBar() {
     addNotification,
     soundEnabled,
     setSoundEnabled,
+    robotSpeaking,
+    ttsEnabled,
+    setTtsEnabled,
+    stopSpeaking,
   } = useApp();
 
   useEffect(() => {
@@ -134,7 +138,7 @@ export function TopBar() {
           onClick={() => {
             setSoundEnabled(!soundEnabled);
             addNotification({
-              type: 'info',
+               type: 'info',
               title: 'Âm thanh Hệ thống',
               message: !soundEnabled ? 'Đã bật hiệu ứng âm thanh Sci-Fi.' : 'Đã tắt âm thanh.',
             });
@@ -150,6 +154,44 @@ export function TopBar() {
             <Volume2 className="w-4 h-4 text-cyan-400" />
           ) : (
             <VolumeX className="w-4 h-4 text-gray-400" />
+          )}
+        </motion.button>
+
+        {/* Robot Voice TTS Toggle */}
+        <motion.button
+          whileHover={{ scale: 1.15 }}
+          whileTap={{ scale: 0.9 }}
+          onClick={() => {
+            if (robotSpeaking) {
+              stopSpeaking();
+            } else {
+              setTtsEnabled(!ttsEnabled);
+              addNotification({
+                type: 'info',
+                title: 'Giọng nói Robot Tiếng Việt',
+                message: !ttsEnabled ? 'Đã kích hoạt giọng đọc Robot AI.' : 'Đã tắt giọng nói Robot.',
+              });
+            }
+          }}
+          className="w-8 h-8 rounded-lg flex items-center justify-center cursor-pointer relative"
+          style={{
+            background: robotSpeaking
+              ? 'rgba(168,85,247,0.25)'
+              : ttsEnabled
+              ? 'rgba(168,85,247,0.12)'
+              : 'rgba(255,255,255,0.04)',
+            border: `1px solid ${robotSpeaking ? '#a855f7' : ttsEnabled ? 'rgba(168,85,247,0.4)' : 'rgba(255,255,255,0.15)'}`,
+            boxShadow: robotSpeaking ? '0 0 12px rgba(168,85,247,0.5)' : 'none',
+          }}
+          title={robotSpeaking ? 'Đang phát giọng nói (Nhấn để dừng)' : ttsEnabled ? 'Tắt giọng nói Robot' : 'Bật giọng nói Robot Tiếng Việt'}
+        >
+          <Bot className="w-4 h-4" style={{ color: robotSpeaking ? '#ffffff' : ttsEnabled ? '#a855f7' : '#6b7280' }} />
+          {robotSpeaking && (
+            <motion.div
+              animate={{ scale: [1, 1.4, 1], opacity: [0.8, 0, 0.8] }}
+              transition={{ duration: 1, repeat: Infinity }}
+              className="absolute inset-0 rounded-lg border border-purple-400"
+            />
           )}
         </motion.button>
 

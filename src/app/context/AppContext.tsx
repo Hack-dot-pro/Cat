@@ -7,6 +7,7 @@ import {
   ChatMessageParam,
 } from '../services/openai';
 import { sounds } from '../services/sound';
+import { robotVoice } from '../services/robotVoice';
 
 export type AIState = 'idle' | 'listening' | 'processing' | 'responding';
 
@@ -83,6 +84,17 @@ interface AppContextType {
   setSoundEnabled: (v: boolean) => void;
   soundVolume: number;
   setSoundVolume: (v: number) => void;
+  robotSpeaking: boolean;
+  speakText: (text: string) => void;
+  stopSpeaking: () => void;
+  ttsEnabled: boolean;
+  setTtsEnabled: (v: boolean) => void;
+  ttsAutoSpeak: boolean;
+  setTtsAutoSpeak: (v: boolean) => void;
+  ttsRate: number;
+  setTtsRate: (v: number) => void;
+  ttsPitch: number;
+  setTtsPitch: (v: number) => void;
 }
 
 const AppContext = createContext<AppContextType | null>(null);
@@ -212,7 +224,21 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [soundEnabled, setSoundEnabledState] = useState<boolean>(() => sounds.isEnabled());
   const [soundVolume, setSoundVolumeState] = useState<number>(() => sounds.getVolume());
 
+  // Robot Voice TTS State
+  const [robotSpeaking, setRobotSpeaking] = useState<boolean>(false);
+  const [ttsEnabled, setTtsEnabledState] = useState<boolean>(() => robotVoice.isEnabled());
+  const [ttsAutoSpeak, setTtsAutoSpeakState] = useState<boolean>(() => robotVoice.isAutoSpeak());
+  const [ttsRate, setTtsRateState] = useState<number>(() => robotVoice.getRate());
+  const [ttsPitch, setTtsPitchState] = useState<number>(() => robotVoice.getPitch());
+
   const abortControllerRef = useRef<AbortController | null>(null);
+
+  // Sync robot voice speaking state
+  useEffect(() => {
+    return robotVoice.onSpeakingChange((speaking) => {
+      setRobotSpeaking(speaking);
+    });
+  }, []);
 
   // Play startup sound on first load
   useEffect(() => {
@@ -231,6 +257,34 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const setSoundVolume = useCallback((v: number) => {
     sounds.setVolume(v);
     setSoundVolumeState(v);
+  }, []);
+
+  const setTtsEnabled = useCallback((v: boolean) => {
+    robotVoice.setEnabled(v);
+    setTtsEnabledState(v);
+  }, []);
+
+  const setTtsAutoSpeak = useCallback((v: boolean) => {
+    robotVoice.setAutoSpeak(v);
+    setTtsAutoSpeakState(v);
+  }, []);
+
+  const setTtsRate = useCallback((v: number) => {
+    robotVoice.setRate(v);
+    setTtsRateState(v);
+  }, []);
+
+  const setTtsPitch = useCallback((v: number) => {
+    robotVoice.setPitch(v);
+    setTtsPitchState(v);
+  }, []);
+
+  const speakText = useCallback((text: string) => {
+    robotVoice.speak(text);
+  }, []);
+
+  const stopSpeaking = useCallback(() => {
+    robotVoice.stop();
   }, []);
 
   const updateAIConfig = useCallback((cfg: Partial<AIConfig>) => {
@@ -253,6 +307,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   const clearMessages = useCallback(() => {
     sounds.playClick();
+    robotVoice.stop();
     setMessages([]);
   }, []);
 
@@ -332,6 +387,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           title: 'Phân Tích Hoàn Tất',
           message: `Mô hình ${aiConfig.model} đã phân tích xong tệp "${doc.name}".`,
         });
+
+        // Auto speak summary if enabled
+        if (robotVoice.isEnabled() && robotVoice.isAutoSpeak()) {
+          robotVoice.speak(`Đã phân tích xong tệp ${doc.name}. ${finalAnalysis.slice(0, 200)}`);
+        }
       } catch (err: any) {
         sounds.playError();
         const fallbackErr = `Lỗi phân tích từ API: ${err.message || 'Không thể kết nối API'}`;
@@ -357,6 +417,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           title: 'Phân Tích Hoàn Tất (Giả Lập)',
           message: `Đã phân tích xong tệp "${doc.name}".`,
         });
+
+        if (robotVoice.isEnabled() && robotVoice.isAutoSpeak()) {
+          robotVoice.speak(`Đã phân tích xong tệp ${doc.name}. Tài liệu sẵn sàng.`);
+        }
       }, 1200);
     }
   }, [uploadedDocuments, aiConfig, addNotification]);
@@ -366,6 +430,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     if (!text) return;
 
     sounds.playClick();
+    robotVoice.stop();
     const lower = text.toLowerCase();
 
     // Trigger system action shortcuts
@@ -434,6 +499,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           title: `CAT (${aiConfig.model})`,
           message: 'Phản hồi từ mô hình AI đã hoàn tất.',
         });
+
+        // Robot voice speak response
+        if (robotVoice.isEnabled() && robotVoice.isAutoSpeak() && accumulatedText) {
+          robotVoice.speak(accumulatedText);
+        }
       } catch (err: any) {
         if (err.name === 'AbortError') return;
 
@@ -474,6 +544,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           title: 'Phản hồi từ CAT',
           message: 'Đã tạo phản hồi. Cấu hình API Key trong Cài đặt để dùng AI trực tiếp.',
         });
+        if (robotVoice.isEnabled() && robotVoice.isAutoSpeak()) {
+          robotVoice.speak(simulatedReply);
+        }
         setTimeout(() => setAiState('idle'), 1500);
       }, 1000);
     }
@@ -517,6 +590,17 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         setSoundEnabled,
         soundVolume,
         setSoundVolume,
+        robotSpeaking,
+        speakText,
+        stopSpeaking,
+        ttsEnabled,
+        setTtsEnabled,
+        ttsAutoSpeak,
+        setTtsAutoSpeak,
+        ttsRate,
+        setTtsRate,
+        ttsPitch,
+        setTtsPitch,
       }}
     >
       {children}

@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Terminal, Send, Trash2, Download, Sparkles, Paperclip, FileText, X } from 'lucide-react';
+import { Terminal, Send, Trash2, Download, Sparkles, Paperclip, FileText, X, Volume2, VolumeX } from 'lucide-react';
 import { useApp, UploadedDocument } from '../context/AppContext';
 import { sounds } from '../services/sound';
 
@@ -28,9 +28,13 @@ export function CommandConsole() {
     setFilesOpen,
     addUploadedDocument,
     addNotification,
+    robotSpeaking,
+    speakText,
+    stopSpeaking,
   } = useApp();
 
   const [input, setInput] = useState('');
+  const [speakingMsgId, setSpeakingMsgId] = useState<string | null>(null);
   const [attachedFile, setAttachedFile] = useState<{ name: string; content: string; size: number } | null>(null);
   const endRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -253,7 +257,31 @@ export function CommandConsole() {
                     </motion.span>
                   )}
                 </p>
-                <div className="mt-1 flex justify-end">
+                <div className="mt-1.5 flex items-center justify-between">
+                  {msg.type === 'ai' ? (
+                    <button
+                      onClick={() => {
+                        sounds.playClick();
+                        if (robotSpeaking && speakingMsgId === msg.id) {
+                          stopSpeaking();
+                          setSpeakingMsgId(null);
+                        } else {
+                          speakText(msg.text);
+                          setSpeakingMsgId(msg.id);
+                        }
+                      }}
+                      className="flex items-center gap-1 text-[9px] px-1.5 py-0.5 rounded cursor-pointer transition-colors"
+                      style={{
+                        background: robotSpeaking && speakingMsgId === msg.id ? 'rgba(168,85,247,0.25)' : 'rgba(0,245,255,0.06)',
+                        color: robotSpeaking && speakingMsgId === msg.id ? '#a855f7' : 'rgba(0,245,255,0.6)',
+                        border: `1px solid ${robotSpeaking && speakingMsgId === msg.id ? '#a855f7' : 'rgba(0,245,255,0.15)'}`,
+                      }}
+                      title="Đọc bằng giọng Robot Tiếng Việt"
+                    >
+                      <Volume2 className={`w-2.5 h-2.5 ${robotSpeaking && speakingMsgId === msg.id ? 'animate-pulse' : ''}`} />
+                      <span style={{ ...mono }}>{robotSpeaking && speakingMsgId === msg.id ? 'ĐANG ĐỌC' : 'ĐỌC GIỌNG ROBOT'}</span>
+                    </button>
+                  ) : <div />}
                   <span style={{ ...mono, color: 'rgba(255,255,255,0.25)', fontSize: '9px' }}>
                     {msg.timestamp.toLocaleTimeString('vi-VN', { hour12: false })}
                   </span>

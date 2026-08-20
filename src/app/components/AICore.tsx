@@ -81,7 +81,7 @@ function Ring({
 }
 
 export function AICore() {
-  const { aiState, setAiState } = useApp();
+  const { aiState, setAiState, robotSpeaking } = useApp();
   const cfg = stateConfig[aiState];
   const [dataPoints, setDataPoints] = useState<{ x: number; y: number; val: string }[]>([]);
 
@@ -298,14 +298,44 @@ export function AICore() {
           ))}
         </div>
 
-        {/* Click hint */}
-        <motion.p
-          animate={{ opacity: [0.3, 0.7, 0.3] }}
-          transition={{ duration: 3, repeat: Infinity }}
-          style={{ ...raj, color: 'rgba(0,245,255,0.5)', fontSize: '11px', marginTop: 4 }}
-        >
-          NHẤN VÀO LÕI ĐỂ THAY ĐỔI TRẠNG THÁI
-        </motion.p>
+        {/* Robot Speaking Hologram Wave */}
+        {robotSpeaking ? (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.9 }}
+            className="flex items-center gap-1.5 px-3 py-1 rounded-full mt-1"
+            style={{
+              background: 'rgba(168,85,247,0.15)',
+              border: '1px solid rgba(168,85,247,0.4)',
+              boxShadow: '0 0 15px rgba(168,85,247,0.3)',
+            }}
+          >
+            <div className="flex items-center gap-0.5 h-3">
+              {[0, 1, 2, 3, 4, 5, 6].map(i => (
+                <motion.div
+                  key={i}
+                  animate={{ height: ['3px', '14px', '3px'] }}
+                  transition={{ duration: 0.4, repeat: Infinity, delay: i * 0.08 }}
+                  className="w-0.5 rounded-full"
+                  style={{ background: '#a855f7' }}
+                />
+              ))}
+            </div>
+            <span style={{ ...mono, color: '#a855f7', fontSize: '9px', letterSpacing: '0.1em' }}>
+              GIỌNG ROBOT TIẾNG VIỆT ĐANG PHÁT
+            </span>
+          </motion.div>
+        ) : (
+          /* Click hint */
+          <motion.p
+            animate={{ opacity: [0.3, 0.7, 0.3] }}
+            transition={{ duration: 3, repeat: Infinity }}
+            style={{ ...raj, color: 'rgba(0,245,255,0.5)', fontSize: '11px', marginTop: 4 }}
+          >
+            NHẤN VÀO LÕI ĐỂ THAY ĐỔI TRẠNG THÁI
+          </motion.p>
+        )}
       </div>
     </div>
   );
