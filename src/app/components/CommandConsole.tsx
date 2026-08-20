@@ -1,13 +1,21 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Terminal, Send, Trash2, Download, Sparkles, Cpu } from 'lucide-react';
+import { Terminal, Send, Trash2, Download, Sparkles } from 'lucide-react';
 import { useApp } from '../context/AppContext';
+import { sounds } from '../services/sound';
 
 const orb = { fontFamily: 'Orbitron, sans-serif' };
 const mono = { fontFamily: 'Share Tech Mono, monospace' };
 const raj = { fontFamily: 'Rajdhani, sans-serif' };
 
-const SUGGESTIONS = ['scan', 'status', 'weather', 'deploy', 'analyze', 'help'];
+const SUGGESTIONS = [
+  'quét hệ thống',
+  'trạng thái',
+  'thời tiết',
+  'triển khai',
+  'phân tích',
+  'trợ giúp',
+];
 
 export function CommandConsole() {
   const {
@@ -37,13 +45,14 @@ export function CommandConsole() {
   };
 
   const handleExportChat = () => {
+    sounds.playClick();
     const text = messages
       .map(
         m =>
-          `[${m.timestamp.toISOString()}] ${m.type.toUpperCase()}: ${m.text}`
+          `[${m.timestamp.toLocaleString('vi-VN')}] ${m.type.toUpperCase()}: ${m.text}`
       )
       .join('\n\n');
-    const blob = new Blob([text], { type: 'text/plain' });
+    const blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
@@ -52,8 +61,8 @@ export function CommandConsole() {
     URL.revokeObjectURL(url);
     addNotification({
       type: 'success',
-      title: 'Console Exported',
-      message: 'Chat history downloaded successfully.',
+      title: 'Đã Xuất Nhật Ký',
+      message: 'Lịch sử hội thoại đã được tải xuống máy.',
     });
   };
 
@@ -64,19 +73,22 @@ export function CommandConsole() {
         <div className="flex items-center gap-2">
           <Terminal className="w-4 h-4" style={{ color: '#00f5ff' }} />
           <span style={{ ...orb, color: '#00f5ff', fontSize: '11px', letterSpacing: '0.15em' }}>
-            COMMAND CONSOLE
+            BẢNG ĐIỀU KHIỂN & DÒNG LỆNH
           </span>
         </div>
         <div className="flex items-center gap-2">
           {/* Active Model Badge */}
           <button
-            onClick={() => setSettingsOpen(true)}
+            onClick={() => {
+              sounds.playClick();
+              setSettingsOpen(true);
+            }}
             className="flex items-center gap-1 px-2 py-0.5 rounded-md cursor-pointer hover:bg-white/5 transition-colors"
             style={{
               background: 'rgba(168,85,247,0.1)',
               border: '1px solid rgba(168,85,247,0.25)',
             }}
-            title="Click to configure AI Model / API"
+            title="Nhấn để cấu hình Model & API"
           >
             <Sparkles className="w-2.5 h-2.5 text-purple-400" />
             <span style={{ ...mono, color: '#a855f7', fontSize: '8px' }}>
@@ -90,7 +102,7 @@ export function CommandConsole() {
             onClick={handleExportChat}
             className="p-1.5 rounded-lg cursor-pointer"
             style={{ background: 'rgba(0,245,255,0.05)', border: '1px solid rgba(0,245,255,0.12)' }}
-            title="Download logs"
+            title="Tải nhật ký hội thoại"
           >
             <Download className="w-3 h-3" style={{ color: 'rgba(0,245,255,0.5)' }} />
           </motion.button>
@@ -100,7 +112,7 @@ export function CommandConsole() {
             onClick={clearMessages}
             className="p-1.5 rounded-lg cursor-pointer"
             style={{ background: 'rgba(0,245,255,0.05)', border: '1px solid rgba(0,245,255,0.12)' }}
-            title="Clear console"
+            title="Xóa màn hình dòng lệnh"
           >
             <Trash2 className="w-3 h-3" style={{ color: 'rgba(0,245,255,0.5)' }} />
           </motion.button>
@@ -152,7 +164,15 @@ export function CommandConsole() {
                       }
                 }
               >
-                <p style={{ ...raj, color: msg.type === 'ai' ? 'rgba(220,240,255,0.95)' : 'rgba(220,200,255,0.95)', fontSize: '13px', lineHeight: '1.6', whiteSpace: 'pre-wrap' }}>
+                <p
+                  style={{
+                    ...raj,
+                    color: msg.type === 'ai' ? 'rgba(220,240,255,0.95)' : 'rgba(220,200,255,0.95)',
+                    fontSize: '13px',
+                    lineHeight: '1.6',
+                    whiteSpace: 'pre-wrap',
+                  }}
+                >
                   {msg.text || (msg.isStreaming ? '...' : '')}
                   {msg.isStreaming && (
                     <motion.span
@@ -165,8 +185,8 @@ export function CommandConsole() {
                   )}
                 </p>
                 <div className="mt-1 flex justify-end">
-                  <span style={{ ...mono, color: 'rgba(255,255,255,0.2)', fontSize: '9px' }}>
-                    {msg.timestamp.toLocaleTimeString('en-US', { hour12: false })}
+                  <span style={{ ...mono, color: 'rgba(255,255,255,0.25)', fontSize: '9px' }}>
+                    {msg.timestamp.toLocaleTimeString('vi-VN', { hour12: false })}
                   </span>
                 </div>
               </div>
@@ -187,7 +207,7 @@ export function CommandConsole() {
           ))}
         </AnimatePresence>
 
-        {/* Processing animation */}
+        {/* Processing indicator */}
         <AnimatePresence>
           {isProcessing && (
             <motion.div
@@ -229,7 +249,11 @@ export function CommandConsole() {
             key={s}
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
-            onClick={() => { setInput(s); inputRef.current?.focus(); }}
+            onClick={() => {
+              sounds.playClick();
+              setInput(s);
+              inputRef.current?.focus();
+            }}
             className="px-2.5 py-1 rounded-lg cursor-pointer"
             style={{
               background: 'rgba(0,245,255,0.04)',
@@ -256,7 +280,7 @@ export function CommandConsole() {
           value={input}
           onChange={e => setInput(e.target.value)}
           onKeyDown={e => e.key === 'Enter' && handleSubmit()}
-          placeholder="Ask CAT or enter command..."
+          placeholder="Nhập lệnh hoặc trò chuyện với CAT..."
           className="flex-1 outline-none bg-transparent"
           style={{ ...raj, color: 'rgba(255,255,255,0.85)', fontSize: '13px' }}
         />

@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import {
   X, User, Brain, Key, Shield, Eye, EyeOff, ChevronDown,
   CheckCircle, AlertCircle, Save, RotateCcw, Lock, Zap,
-  Globe, Server, Sparkles, Check, RefreshCw
+  Check, RefreshCw, Volume2
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import {
@@ -13,18 +13,19 @@ import {
   testAIConnection,
   AIConfig,
 } from '../services/openai';
+import { sounds } from '../services/sound';
 
 const orb = { fontFamily: 'Orbitron, sans-serif' };
 const mono = { fontFamily: 'Share Tech Mono, monospace' };
 const raj = { fontFamily: 'Rajdhani, sans-serif' };
 
-type Section = 'ai' | 'user' | 'api' | 'security';
+type Section = 'ai' | 'api' | 'user' | 'security';
 
 const SECTIONS: { id: Section; label: string; icon: React.ElementType; color: string }[] = [
-  { id: 'ai', label: 'AI & COMPLETIONS', icon: Brain, color: '#a855f7' },
-  { id: 'api', label: 'API VAULT', icon: Key, color: '#f59e0b' },
-  { id: 'user', label: 'USER PROFILE', icon: User, color: '#00f5ff' },
-  { id: 'security', label: 'SECURITY', icon: Shield, color: '#22c55e' },
+  { id: 'ai', label: 'AI & MÔ HÌNH', icon: Brain, color: '#a855f7' },
+  { id: 'api', label: 'KHO KHÓA API', icon: Key, color: '#f59e0b' },
+  { id: 'user', label: 'HỒ SƠ NGƯỜI DÙNG', icon: User, color: '#00f5ff' },
+  { id: 'security', label: 'BẢO MẬT & MÃ HÓA', icon: Shield, color: '#22c55e' },
 ];
 
 function Field({
@@ -72,7 +73,14 @@ function Field({
           style={{ ...raj, color: 'rgba(255,255,255,0.85)', fontSize: '13px' }}
         />
         {isSecret && (
-          <button onClick={() => setShow(!show)} className="cursor-pointer">
+          <button
+            type="button"
+            onClick={() => {
+              sounds.playClick();
+              setShow(!show);
+            }}
+            className="cursor-pointer"
+          >
             {show ? (
               <EyeOff className="w-4 h-4" style={{ color: 'rgba(255,255,255,0.3)' }} />
             ) : (
@@ -98,9 +106,13 @@ function Toggle({
 }) {
   return (
     <div className="flex items-center justify-between py-2">
-      <span style={{ ...raj, color: 'rgba(255,255,255,0.7)', fontSize: '13px' }}>{label}</span>
+      <span style={{ ...raj, color: 'rgba(255,255,255,0.8)', fontSize: '13px' }}>{label}</span>
       <motion.button
-        onClick={() => onChange(!value)}
+        type="button"
+        onClick={() => {
+          sounds.playClick();
+          onChange(!value);
+        }}
         className="w-11 h-6 rounded-full relative cursor-pointer"
         style={{
           background: value ? `${color}30` : 'rgba(255,255,255,0.06)',
@@ -122,7 +134,17 @@ function Toggle({
 }
 
 export function SettingsPanel() {
-  const { settingsOpen, setSettingsOpen, addNotification, aiConfig, updateAIConfig } = useApp();
+  const {
+    settingsOpen,
+    setSettingsOpen,
+    addNotification,
+    aiConfig,
+    updateAIConfig,
+    soundEnabled,
+    setSoundEnabled,
+    soundVolume,
+    setSoundVolume,
+  } = useApp();
   const [section, setSection] = useState<Section>('ai');
   const [saved, setSaved] = useState(false);
 
@@ -140,12 +162,12 @@ export function SettingsPanel() {
   } | null>(null);
 
   // User settings
-  const [username, setUsername] = useState('cat_user');
-  const [fullName, setFullName] = useState('Alex Morgan');
+  const [username, setUsername] = useState('cat_admin');
+  const [fullName, setFullName] = useState('Quản trị viên');
   const [assistantName, setAssistantName] = useState('CAT');
 
   // Other API keys
-  const [gitUrl, setGitUrl] = useState('https://github.com/cat-ai/config');
+  const [gitUrl, setGitUrl] = useState('https://github.com/Hack-dot-pro/Cat');
   const [weatherKey, setWeatherKey] = useState('wk_••••••••••••••');
   const [searchId, setSearchId] = useState('cx_••••••••••••');
 
@@ -164,6 +186,7 @@ export function SettingsPanel() {
   }, [settingsOpen, aiConfig]);
 
   const handleProviderSelect = (providerId: AIProvider) => {
+    sounds.playClick();
     const preset = PROVIDER_PRESETS[providerId];
     setLocalAIConfig(prev => ({
       ...prev,
@@ -175,29 +198,33 @@ export function SettingsPanel() {
   };
 
   const handleTestConnection = async () => {
+    sounds.playClick();
     setTestingConnection(true);
     setTestResult(null);
     try {
       const res = await testAIConnection(localAIConfig);
       setTestResult(res);
       if (res.success) {
+        sounds.playSuccess();
         addNotification({
           type: 'success',
-          title: 'API Verified',
-          message: `${res.modelUsed} responded in ${res.latencyMs}ms`,
+          title: 'Kết Nối Thành Công',
+          message: `Mô hình ${res.modelUsed} phản hồi trong ${res.latencyMs}ms`,
         });
       } else {
+        sounds.playError();
         addNotification({
           type: 'error',
-          title: 'API Test Failed',
+          title: 'Kết Nối Thất Bại',
           message: res.message,
         });
       }
     } catch (err: any) {
+      sounds.playError();
       setTestResult({
         success: false,
         latencyMs: 0,
-        message: err.message || 'Unknown connection error',
+        message: err.message || 'Lỗi kết nối không xác định',
         modelUsed: localAIConfig.model,
       });
     } finally {
@@ -206,27 +233,29 @@ export function SettingsPanel() {
   };
 
   const handleSave = () => {
+    sounds.playSuccess();
     updateAIConfig(localAIConfig);
     setSaved(true);
     addNotification({
       type: 'success',
-      title: 'Settings Saved',
-      message: `OpenAI completions configured with model "${localAIConfig.model}".`,
+      title: 'Đã Lưu Cấu Hình',
+      message: `Đã cập nhật mô hình "${localAIConfig.model}" và điểm cuối API.`,
     });
     setTimeout(() => setSaved(false), 3000);
   };
 
   const handleResetDefaults = () => {
+    sounds.playClick();
     setLocalAIConfig(DEFAULT_AI_CONFIG);
     setTestResult(null);
     addNotification({
       type: 'info',
-      title: 'Reset to Defaults',
-      message: 'AI configuration reset to standard OpenAI GPT-4o preset.',
+      title: 'Khôi Phục Mặc Định',
+      message: 'Đã đặt lại cấu hình AI về mặc định Xkiro / Gwen 3.8 max.',
     });
   };
 
-  const activePreset = PROVIDER_PRESETS[localAIConfig.provider] || PROVIDER_PRESETS.openai;
+  const activePreset = PROVIDER_PRESETS[localAIConfig.provider] || PROVIDER_PRESETS.xkiro;
 
   return (
     <AnimatePresence>
@@ -258,16 +287,19 @@ export function SettingsPanel() {
             >
               <div>
                 <h2 style={{ ...orb, color: '#00f5ff', fontSize: '15px', letterSpacing: '0.2em', margin: 0 }}>
-                  SYSTEM CONFIGURATION
+                  CẤU HÌNH HỆ THỐNG
                 </h2>
-                <p style={{ ...mono, color: 'rgba(0,245,255,0.45)', fontSize: '10px', marginTop: 2 }}>
-                  CAT OS v3.7.2 — OpenAI Completions & Neural Settings
+                <p style={{ ...mono, color: 'rgba(0,245,255,0.5)', fontSize: '10px', marginTop: 2 }}>
+                  HĐH CAT v3.7.2 — Cấu hình Mô hình & Lõi Nơ-ron
                 </p>
               </div>
               <motion.button
                 whileHover={{ scale: 1.1, rotate: 90 }}
                 whileTap={{ scale: 0.9 }}
-                onClick={() => setSettingsOpen(false)}
+                onClick={() => {
+                  sounds.playClick();
+                  setSettingsOpen(false);
+                }}
                 className="w-9 h-9 rounded-xl flex items-center justify-center cursor-pointer"
                 style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)' }}
               >
@@ -285,7 +317,10 @@ export function SettingsPanel() {
                   <motion.button
                     key={s.id}
                     whileHover={{ x: 2 }}
-                    onClick={() => setSection(s.id)}
+                    onClick={() => {
+                      sounds.playClick();
+                      setSection(s.id);
+                    }}
                     className="flex items-center gap-3 px-3.5 py-2.5 rounded-xl cursor-pointer text-left"
                     style={{
                       background: section === s.id ? `${s.color}15` : 'transparent',
@@ -298,6 +333,45 @@ export function SettingsPanel() {
                     </span>
                   </motion.button>
                 ))}
+
+                {/* Sound Settings in sidebar */}
+                <div
+                  className="mt-4 rounded-xl p-3"
+                  style={{
+                    background: 'rgba(0, 8, 20, 0.6)',
+                    border: '1px solid rgba(0,245,255,0.1)',
+                  }}
+                >
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-1.5">
+                      <Volume2 className="w-3.5 h-3.5 text-cyan-400" />
+                      <span style={{ ...mono, color: 'rgba(255,255,255,0.8)', fontSize: '9px' }}>
+                        ÂM THANH SCI-FI
+                      </span>
+                    </div>
+                    <button
+                      onClick={() => setSoundEnabled(!soundEnabled)}
+                      className="text-[9px] px-1.5 py-0.5 rounded cursor-pointer"
+                      style={{
+                        background: soundEnabled ? 'rgba(34,197,94,0.2)' : 'rgba(255,255,255,0.06)',
+                        color: soundEnabled ? '#22c55e' : 'rgba(255,255,255,0.4)',
+                      }}
+                    >
+                      {soundEnabled ? 'BẬT' : 'TẮT'}
+                    </button>
+                  </div>
+                  {soundEnabled && (
+                    <input
+                      type="range"
+                      min="0.05"
+                      max="1"
+                      step="0.05"
+                      value={soundVolume}
+                      onChange={e => setSoundVolume(parseFloat(e.target.value))}
+                      className="w-full accent-cyan-400"
+                    />
+                  )}
+                </div>
 
                 {/* API Status widget in sidebar */}
                 <div
@@ -315,11 +389,11 @@ export function SettingsPanel() {
                         boxShadow: `0 0 6px ${localAIConfig.apiKey || localAIConfig.provider === 'ollama' ? '#22c55e' : '#f59e0b'}`,
                       }}
                     />
-                    <span style={{ ...mono, color: 'rgba(255,255,255,0.7)', fontSize: '9px' }}>
+                    <span style={{ ...mono, color: 'rgba(255,255,255,0.8)', fontSize: '9px' }}>
                       {localAIConfig.provider.toUpperCase()}
                     </span>
                   </div>
-                  <span style={{ ...mono, color: 'rgba(0,245,255,0.5)', fontSize: '8px', wordBreak: 'break-all' }}>
+                  <span style={{ ...mono, color: 'rgba(0,245,255,0.6)', fontSize: '8px', wordBreak: 'break-all' }}>
                     {localAIConfig.model}
                   </span>
                 </div>
@@ -341,8 +415,8 @@ export function SettingsPanel() {
                     >
                       {/* Provider Selector */}
                       <div className="flex flex-col gap-2">
-                        <label style={{ ...mono, color: 'rgba(255,255,255,0.4)', fontSize: '10px' }}>
-                          SELECT API PROVIDER (OPENAI COMPLETIONS STANDARD)
+                        <label style={{ ...mono, color: 'rgba(255,255,255,0.5)', fontSize: '10px' }}>
+                          CHỌN NHÀ CUNG CẤP API (CHUẨN OPENAI COMPLETIONS)
                         </label>
                         <div className="grid grid-cols-3 gap-2">
                           {(Object.keys(PROVIDER_PRESETS) as AIProvider[]).map(pKey => {
@@ -365,7 +439,7 @@ export function SettingsPanel() {
                                   className="w-2 h-2 rounded-full"
                                   style={{ background: isSelected ? '#a855f7' : 'rgba(255,255,255,0.2)' }}
                                 />
-                                <span style={{ ...raj, color: isSelected ? '#ffffff' : 'rgba(255,255,255,0.6)', fontSize: '12px' }}>
+                                <span style={{ ...raj, color: isSelected ? '#ffffff' : 'rgba(255,255,255,0.7)', fontSize: '12px' }}>
                                   {p.name}
                                 </span>
                               </motion.button>
@@ -376,31 +450,31 @@ export function SettingsPanel() {
 
                       {/* Base URL */}
                       <Field
-                        label="BASE URL (OPENAI COMPATIBLE ENDPOINT)"
+                        label="ĐỊA CHỈ BASE URL (OPENAI COMPATIBLE ENDPOINT)"
                         value={localAIConfig.baseUrl}
                         onChange={v => setLocalAIConfig(prev => ({ ...prev, baseUrl: v }))}
-                        placeholder="https://api.openai.com/v1"
-                        hint="Supports any OpenAI-compatible proxy, Ollama, Groq, OpenRouter, etc."
+                        placeholder="https://api.xkiro.com/v1"
+                        hint="Hỗ trợ Xkiro, OpenAI, OpenRouter, Groq, DeepSeek, Ollama hoặc proxy riêng"
                       />
 
                       {/* API Key */}
                       <Field
-                        label="API KEY / AUTH TOKEN"
+                        label="KHÓA API / AUTH TOKEN"
                         value={localAIConfig.apiKey}
                         onChange={v => setLocalAIConfig(prev => ({ ...prev, apiKey: v }))}
                         type="password"
-                        placeholder={activePreset.requiresKey ? 'sk-...' : 'Optional for local Ollama'}
-                        hint={activePreset.requiresKey ? 'Required for cloud endpoints' : 'Localhost endpoints do not require key'}
+                        placeholder={activePreset.requiresKey ? 'sk-...' : 'Tùy chọn cho Ollama cục bộ'}
+                        hint={activePreset.requiresKey ? 'Bắt buộc đối với dịch vụ đám mây' : 'Ollama local không cần khóa'}
                       />
 
                       {/* Model Selector & Freeform Model Name */}
                       <div className="flex flex-col gap-1.5">
                         <div className="flex justify-between items-center">
-                          <label style={{ ...mono, color: 'rgba(255,255,255,0.4)', fontSize: '10px' }}>
-                            MODEL NAME (CUSTOM OR PRESET)
+                          <label style={{ ...mono, color: 'rgba(255,255,255,0.5)', fontSize: '10px' }}>
+                            TÊN MÔ HÌNH (TÙY CHỈNH HOẶC CHỌN SẴN)
                           </label>
-                          <span style={{ ...mono, color: 'rgba(168,85,247,0.7)', fontSize: '9px' }}>
-                            Type any custom model or select below
+                          <span style={{ ...mono, color: 'rgba(168,85,247,0.8)', fontSize: '9px' }}>
+                            Nhập bất kỳ tên model hoặc chọn bên dưới
                           </span>
                         </div>
 
@@ -416,13 +490,16 @@ export function SettingsPanel() {
                               type="text"
                               value={localAIConfig.model}
                               onChange={e => setLocalAIConfig(prev => ({ ...prev, model: e.target.value }))}
-                              placeholder="e.g. gpt-4o, deepseek-chat, llama-3.3-70b"
+                              placeholder="ví dụ: Gwen 3.8 max, deepseek-chat, gpt-4o"
                               className="flex-1 bg-transparent outline-none"
                               style={{ ...raj, color: 'rgba(255,255,255,0.9)', fontSize: '13px' }}
                             />
                             <button
                               type="button"
-                              onClick={() => setModelDropdownOpen(!modelDropdownOpen)}
+                              onClick={() => {
+                                sounds.playClick();
+                                setModelDropdownOpen(!modelDropdownOpen);
+                              }}
                               className="p-1 cursor-pointer hover:opacity-80"
                             >
                               <ChevronDown
@@ -452,7 +529,7 @@ export function SettingsPanel() {
                               >
                                 <div className="px-3 py-1.5 text-xs text-gray-400 border-b border-purple-500/10">
                                   <span style={{ ...mono, fontSize: '9px', color: 'rgba(168,85,247,0.8)' }}>
-                                    SUGGESTED MODELS FOR {activePreset.name.toUpperCase()}
+                                    MÔ HÌNH GỢI Ý CHO {activePreset.name.toUpperCase()}
                                   </span>
                                 </div>
                                 {activePreset.suggestedModels.map(m => (
@@ -460,13 +537,14 @@ export function SettingsPanel() {
                                     key={m}
                                     type="button"
                                     onClick={() => {
+                                      sounds.playClick();
                                       setLocalAIConfig(prev => ({ ...prev, model: m }));
                                       setModelDropdownOpen(false);
                                     }}
                                     className="w-full px-4 py-2 text-left cursor-pointer hover:bg-purple-500/15 transition-colors flex items-center justify-between"
                                     style={{ borderBottom: '1px solid rgba(168,85,247,0.08)' }}
                                   >
-                                    <span style={{ ...raj, color: m === localAIConfig.model ? '#a855f7' : 'rgba(255,255,255,0.75)', fontSize: '13px' }}>
+                                    <span style={{ ...raj, color: m === localAIConfig.model ? '#a855f7' : 'rgba(255,255,255,0.8)', fontSize: '13px' }}>
                                       {m}
                                     </span>
                                     {m === localAIConfig.model && (
@@ -482,14 +560,14 @@ export function SettingsPanel() {
 
                       {/* System Prompt */}
                       <div className="flex flex-col gap-1.5">
-                        <label style={{ ...mono, color: 'rgba(255,255,255,0.4)', fontSize: '10px' }}>
-                          SYSTEM PROMPT / INSTRUCTIONS
+                        <label style={{ ...mono, color: 'rgba(255,255,255,0.5)', fontSize: '10px' }}>
+                          LỜI NHẮC HỆ THỐNG / CHỈ THỊ (SYSTEM PROMPT)
                         </label>
                         <textarea
                           rows={2}
                           value={localAIConfig.systemPrompt}
                           onChange={e => setLocalAIConfig(prev => ({ ...prev, systemPrompt: e.target.value }))}
-                          placeholder="You are CAT, a holographic AI operating system..."
+                          placeholder="Bạn là CAT, một hệ điều hành trí tuệ nhân tạo..."
                           className="w-full rounded-xl px-3 py-2 bg-transparent outline-none resize-none"
                           style={{
                             background: 'rgba(0,5,15,0.7)',
@@ -505,7 +583,7 @@ export function SettingsPanel() {
                       <div className="grid grid-cols-2 gap-4">
                         <div className="flex flex-col gap-1.5">
                           <div className="flex justify-between">
-                            <label style={{ ...mono, color: 'rgba(255,255,255,0.4)', fontSize: '10px' }}>TEMPERATURE</label>
+                            <label style={{ ...mono, color: 'rgba(255,255,255,0.5)', fontSize: '10px' }}>ĐỘ SÁNG TẠO (TEMPERATURE)</label>
                             <span style={{ ...mono, color: '#a855f7', fontSize: '10px' }}>{localAIConfig.temperature.toFixed(2)}</span>
                           </div>
                           <input
@@ -521,7 +599,7 @@ export function SettingsPanel() {
 
                         <div className="flex flex-col gap-1.5">
                           <div className="flex justify-between">
-                            <label style={{ ...mono, color: 'rgba(255,255,255,0.4)', fontSize: '10px' }}>MAX TOKENS</label>
+                            <label style={{ ...mono, color: 'rgba(255,255,255,0.5)', fontSize: '10px' }}>TOKEN TỐI ĐA (MAX TOKENS)</label>
                             <span style={{ ...mono, color: '#a855f7', fontSize: '10px' }}>{localAIConfig.maxTokens}</span>
                           </div>
                           <input
@@ -537,7 +615,7 @@ export function SettingsPanel() {
                       </div>
 
                       <Toggle
-                        label="Enable Real-Time SSE Streaming"
+                        label="Bật Truyền Dữ Liệu Thời Gian Thực (SSE Streaming)"
                         value={localAIConfig.streaming}
                         onChange={v => setLocalAIConfig(prev => ({ ...prev, streaming: v }))}
                         color="#a855f7"
@@ -554,8 +632,8 @@ export function SettingsPanel() {
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-2">
                             <Zap className="w-4 h-4" style={{ color: '#a855f7' }} />
-                            <span style={{ ...mono, color: 'rgba(255,255,255,0.8)', fontSize: '11px' }}>
-                              ENDPOINT CONNECTIVITY TEST
+                            <span style={{ ...mono, color: 'rgba(255,255,255,0.85)', fontSize: '11px' }}>
+                              KIỂM TRA KẾT NỐI ĐIỂM CUỐI (ENDPOINT)
                             </span>
                           </div>
 
@@ -573,7 +651,7 @@ export function SettingsPanel() {
                           >
                             <RefreshCw className={`w-3 h-3 ${testingConnection ? 'animate-spin' : ''}`} />
                             <span style={{ ...mono, fontSize: '9px' }}>
-                              {testingConnection ? 'TESTING...' : 'TEST CONNECTION'}
+                              {testingConnection ? 'ĐANG KIỂM TRA...' : 'KIỂM TRA KẾT NỐI'}
                             </span>
                           </motion.button>
                         </div>
@@ -618,27 +696,27 @@ export function SettingsPanel() {
                       className="flex flex-col gap-4"
                     >
                       <Field
-                        label="OPENAI / PRIMARY LLM API KEY"
+                        label="KHÓA API MÔ HÌNH CHÍNH (XKIRO / OPENAI)"
                         value={localAIConfig.apiKey}
                         onChange={v => setLocalAIConfig(prev => ({ ...prev, apiKey: v }))}
                         type="password"
                         placeholder="sk-..."
                       />
                       <Field
-                        label="GIT SYNC URL"
+                        label="ĐỊA CHỈ GIT SYNC"
                         value={gitUrl}
                         onChange={setGitUrl}
                         placeholder="https://github.com/..."
                       />
                       <Field
-                        label="OPENWEATHER API KEY"
+                        label="KHÓA API DỰ BÁO THỜI TIẾT"
                         value={weatherKey}
                         onChange={setWeatherKey}
                         type="password"
                         placeholder="wk_..."
                       />
                       <Field
-                        label="CUSTOM SEARCH ENGINE ID"
+                        label="MÃ CÔNG CỤ TÌM KIẾM (SEARCH ENGINE ID)"
                         value={searchId}
                         onChange={setSearchId}
                         type="password"
@@ -654,8 +732,8 @@ export function SettingsPanel() {
                       >
                         <div className="flex items-center gap-2">
                           <AlertCircle className="w-4 h-4" style={{ color: '#f59e0b' }} />
-                          <span style={{ ...mono, color: 'rgba(245,158,11,0.8)', fontSize: '10px' }}>
-                            ALL API KEYS ARE ENCRYPTED AND STORED SAFELY IN LOCALSTORAGE
+                          <span style={{ ...mono, color: 'rgba(245,158,11,0.85)', fontSize: '10px' }}>
+                            TẤT CẢ KHÓA API ĐƯỢC MÃ HÓA VÀ LƯU AN TOÀN TRONG LOCALSTORAGE TRÌNH DUYỆT
                           </span>
                         </div>
                       </div>
@@ -682,7 +760,7 @@ export function SettingsPanel() {
                           <User className="w-7 h-7" style={{ color: '#00f5ff' }} />
                         </div>
                         <div>
-                          <p style={{ ...raj, color: 'rgba(255,255,255,0.85)', fontSize: '15px' }}>
+                          <p style={{ ...raj, color: 'rgba(255,255,255,0.9)', fontSize: '15px' }}>
                             {fullName}
                           </p>
                           <p style={{ ...mono, color: 'rgba(0,245,255,0.6)', fontSize: '11px' }}>
@@ -692,19 +770,19 @@ export function SettingsPanel() {
                       </div>
 
                       <Field
-                        label="USERNAME"
+                        label="TÊN ĐĂNG NHẬP"
                         value={username}
                         onChange={setUsername}
-                        placeholder="cat_user"
+                        placeholder="cat_admin"
                       />
                       <Field
-                        label="FULL NAME"
+                        label="HỌ VÀ TÊN"
                         value={fullName}
                         onChange={setFullName}
-                        placeholder="Your Name"
+                        placeholder="Tên của bạn"
                       />
                       <Field
-                        label="ASSISTANT NAME"
+                        label="TÊN TRỢ LÝ AI"
                         value={assistantName}
                         onChange={setAssistantName}
                         placeholder="CAT"
@@ -730,11 +808,11 @@ export function SettingsPanel() {
                         <div className="flex items-center gap-3">
                           <Lock className="w-5 h-5" style={{ color: '#22c55e' }} />
                           <div>
-                            <p style={{ ...raj, color: 'rgba(255,255,255,0.8)', fontSize: '14px' }}>
-                              Encryption Active
+                            <p style={{ ...raj, color: 'rgba(255,255,255,0.85)', fontSize: '14px' }}>
+                              Mã Hóa Đang Hoạt Động
                             </p>
-                            <p style={{ ...mono, color: 'rgba(34,197,94,0.7)', fontSize: '10px' }}>
-                              AES-256-GCM + RSA-4096 — All channels secured
+                            <p style={{ ...mono, color: 'rgba(34,197,94,0.8)', fontSize: '10px' }}>
+                              AES-256-GCM + RSA-4096 — Tất cả kênh được bảo vệ
                             </p>
                           </div>
                           <CheckCircle className="w-4 h-4 ml-auto" style={{ color: '#22c55e' }} />
@@ -742,25 +820,25 @@ export function SettingsPanel() {
                       </div>
 
                       <Toggle
-                        label="End-to-End Encryption"
+                        label="Mã Hóa Đầu Cuối Toàn Diện"
                         value={encEnabled}
                         onChange={setEncEnabled}
                         color="#22c55e"
                       />
                       <Toggle
-                        label="Biometric Authentication"
+                        label="Xác Thực Sinh Trắc Học"
                         value={biometrics}
                         onChange={setBiometrics}
                         color="#22c55e"
                       />
                       <Toggle
-                        label="Two-Factor Authentication"
+                        label="Xác Thực Hai Yếu Tố (2FA)"
                         value={twoFactor}
                         onChange={setTwoFactor}
                         color="#22c55e"
                       />
                       <Toggle
-                        label="Audit Logging"
+                        label="Ghi Nhật Ký Kiểm Toán"
                         value={auditLog}
                         onChange={setAuditLog}
                         color="#22c55e"
@@ -786,9 +864,9 @@ export function SettingsPanel() {
                   border: '1px solid rgba(255,255,255,0.08)',
                 }}
               >
-                <RotateCcw className="w-3 h-3" style={{ color: 'rgba(255,255,255,0.4)' }} />
-                <span style={{ ...mono, color: 'rgba(255,255,255,0.4)', fontSize: '9px' }}>
-                  RESET DEFAULTS
+                <RotateCcw className="w-3 h-3" style={{ color: 'rgba(255,255,255,0.5)' }} />
+                <span style={{ ...mono, color: 'rgba(255,255,255,0.6)', fontSize: '9px' }}>
+                  KHÔI PHỤC MẶC ĐỊNH
                 </span>
               </motion.button>
 
@@ -796,15 +874,18 @@ export function SettingsPanel() {
                 <motion.button
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
-                  onClick={() => setSettingsOpen(false)}
+                  onClick={() => {
+                    sounds.playClick();
+                    setSettingsOpen(false);
+                  }}
                   className="flex items-center gap-2 px-4 py-2 rounded-xl cursor-pointer"
                   style={{
                     background: 'rgba(255,255,255,0.04)',
                     border: '1px solid rgba(255,255,255,0.08)',
                   }}
                 >
-                  <span style={{ ...mono, color: 'rgba(255,255,255,0.4)', fontSize: '10px' }}>
-                    CLOSE
+                  <span style={{ ...mono, color: 'rgba(255,255,255,0.5)', fontSize: '10px' }}>
+                    ĐÓNG
                   </span>
                 </motion.button>
 
@@ -825,7 +906,7 @@ export function SettingsPanel() {
                     <Save className="w-3.5 h-3.5" style={{ color: '#00f5ff' }} />
                   )}
                   <span style={{ ...mono, color: saved ? '#22c55e' : '#00f5ff', fontSize: '10px' }}>
-                    {saved ? 'SAVED' : 'SAVE CONFIGURATION'}
+                    {saved ? 'ĐÃ LƯU' : 'LƯU CẤU HÌNH'}
                   </span>
                 </motion.button>
               </div>

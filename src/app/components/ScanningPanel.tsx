@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { X, Scan, Zap, Eye, Activity, CheckCircle } from 'lucide-react';
 import { useApp } from '../context/AppContext';
+import { sounds } from '../services/sound';
 
 const orb = { fontFamily: 'Orbitron, sans-serif' };
 const mono = { fontFamily: 'Share Tech Mono, monospace' };
@@ -10,14 +11,14 @@ const raj = { fontFamily: 'Rajdhani, sans-serif' };
 type ScanPhase = 'initializing' | 'scanning' | 'analyzing' | 'complete';
 
 const SCAN_RESULTS = [
-  { category: 'NEURAL NETWORK', value: 'Gemini 2.5 — 98.7% accuracy', status: 'optimal' },
-  { category: 'SECURITY LAYER', value: 'AES-256 + RSA-4096 — No threats', status: 'secure' },
-  { category: 'MEMORY USAGE', value: '6.2 GB / 16 GB — 38% utilized', status: 'optimal' },
-  { category: 'NETWORK HEALTH', value: '847ms latency — 1.2 GB/s throughput', status: 'good' },
-  { category: 'API ENDPOINTS', value: '4/4 services online — 99.9% uptime', status: 'optimal' },
-  { category: 'VOICE ENGINE', value: 'Model v2.3 — 94.2% recognition rate', status: 'good' },
-  { category: 'GESTURE MODULE', value: 'Camera feed active — 89.1% confidence', status: 'good' },
-  { category: 'DATA INTEGRITY', value: 'All checksums verified — Zero corruption', status: 'secure' },
+  { category: 'MẠNG NƠ-RON AI', value: 'Xkiro / Gwen 3.8 max — Độ chính xác 99.2%', status: 'optimal' },
+  { category: 'LỚP BẢO MẬT', value: 'Mã hóa AES-256 + RSA-4096 — An toàn tuyệt đối', status: 'secure' },
+  { category: 'BỘ NHỚ RAM', value: '6.2 GB / 16 GB — Đang sử dụng 38%', status: 'optimal' },
+  { category: 'TÌNH TRẠNG MẠNG', value: 'Độ trễ 42ms — Băng thông 1.2 GB/s', status: 'good' },
+  { category: 'ĐIỂM CUỐI API', value: '4/4 dịch vụ trực tuyến — Sẵn sàng 99.9%', status: 'optimal' },
+  { category: 'CÔNG CỤ GIỌNG NÓI', value: 'Nhận diện tiếng Việt vi-VN — Độ chính xác 95.8%', status: 'good' },
+  { category: 'MODULE CỬ CHỈ', value: 'Camera cảm biến không gian — Độ tin cậy 91.4%', status: 'good' },
+  { category: 'TOÀN VẸN DỮ LIỆU', value: 'Đã xác thực checksum — Không phát hiện hỏng hóc', status: 'secure' },
 ];
 
 const DATA_POINTS = Array(40).fill(0).map((_, i) => ({
@@ -40,7 +41,7 @@ export function ScanningPanel() {
       return;
     }
 
-    // Phase sequence
+    sounds.playScan();
     let prog = 0;
     setPhase('initializing');
 
@@ -55,11 +56,15 @@ export function ScanningPanel() {
           setTimeout(() => {
             setPhase('complete');
             setVisibleResults(0);
-            // Show results one by one
+            sounds.playSuccess();
             SCAN_RESULTS.forEach((_, i) => {
               setTimeout(() => setVisibleResults(v => v + 1), i * 200);
             });
-            addNotification({ type: 'success', title: 'Scan Complete', message: 'Full spectrum analysis finished. No anomalies detected.' });
+            addNotification({
+              type: 'success',
+              title: 'Quét Hoàn Tất',
+              message: 'Phân tích quang phổ toàn diện hoàn thành. Hệ thống an toàn.',
+            });
           }, 1200);
         }
         setProgress(Math.min(100, prog));
@@ -71,6 +76,13 @@ export function ScanningPanel() {
   }, [scanningActive]);
 
   const statusColor = { optimal: '#22c55e', secure: '#00f5ff', good: '#f59e0b' } as const;
+  const statusLabel = { optimal: 'TỐI ƯU', secure: 'AN TOÀN', good: 'TỐT' };
+  const phaseLabel = {
+    initializing: 'ĐANG KHỞI TẠO',
+    scanning: 'ĐANG QUÉT',
+    analyzing: 'ĐANG PHÂN TÍCH',
+    complete: 'HOÀN TẤT',
+  };
 
   return (
     <AnimatePresence>
@@ -87,7 +99,10 @@ export function ScanningPanel() {
           <motion.button
             whileHover={{ scale: 1.1 }}
             whileTap={{ scale: 0.9 }}
-            onClick={() => setScanningActive(false)}
+            onClick={() => {
+              sounds.playClick();
+              setScanningActive(false);
+            }}
             className="absolute top-6 right-6 w-10 h-10 rounded-xl flex items-center justify-center cursor-pointer"
             style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)' }}
           >
@@ -122,10 +137,10 @@ export function ScanningPanel() {
                 </motion.div>
                 <div>
                   <span style={{ ...orb, color: '#00f5ff', fontSize: '14px', letterSpacing: '0.2em' }}>
-                    CAT SPECTRUM SCANNER
+                    MÁY QUÉT QUANG PHỔ HOLOGRAPHIC CAT
                   </span>
                   <div style={{ ...mono, color: 'rgba(0,245,255,0.5)', fontSize: '10px' }}>
-                    FULL SYSTEM ANALYSIS v2.4.1
+                    PHÂN TÍCH TOÀN DIỆN HỆ THỐNG v2.4.1
                   </div>
                 </div>
               </div>
@@ -138,7 +153,7 @@ export function ScanningPanel() {
                     style={{ background: phase === 'complete' ? '#22c55e' : '#f59e0b' }}
                   />
                   <span style={{ ...mono, color: phase === 'complete' ? '#22c55e' : '#f59e0b', fontSize: '10px', textTransform: 'uppercase' }}>
-                    {phase}
+                    {phaseLabel[phase]}
                   </span>
                 </div>
                 <span style={{ ...orb, color: '#00f5ff', fontSize: '18px' }}>
@@ -243,9 +258,7 @@ export function ScanningPanel() {
                     className="absolute inset-0 m-auto w-16 h-16 rounded-full"
                     style={{ border: '1px dashed rgba(0,245,255,0.2)' }}
                   />
-                  <div
-                    className="absolute inset-0 flex items-center justify-center"
-                  >
+                  <div className="absolute inset-0 flex items-center justify-center">
                     {phase === 'complete' ? (
                       <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ type: 'spring' }}>
                         <CheckCircle className="w-8 h-8" style={{ color: '#22c55e' }} />
@@ -259,7 +272,7 @@ export function ScanningPanel() {
                 {/* Progress bar */}
                 <div className="absolute bottom-0 left-0 right-0 p-4">
                   <div className="flex items-center justify-between mb-1.5">
-                    <span style={{ ...mono, color: 'rgba(0,245,255,0.6)', fontSize: '9px' }}>SCAN PROGRESS</span>
+                    <span style={{ ...mono, color: 'rgba(0,245,255,0.6)', fontSize: '9px' }}>TIẾN ĐỘ QUÉT</span>
                     <span style={{ ...mono, color: '#00f5ff', fontSize: '9px' }}>{Math.round(progress)}%</span>
                   </div>
                   <div className="h-1.5 rounded-full overflow-hidden" style={{ background: 'rgba(0,245,255,0.1)' }}>
@@ -281,7 +294,7 @@ export function ScanningPanel() {
                 <div className="flex items-center gap-2 mb-1">
                   <Activity className="w-4 h-4" style={{ color: '#00f5ff' }} />
                   <span style={{ ...orb, color: '#00f5ff', fontSize: '11px', letterSpacing: '0.15em' }}>
-                    ANALYSIS RESULTS
+                    KẾT QUẢ PHÂN TÍCH CHI TIẾT
                   </span>
                 </div>
 
@@ -316,7 +329,7 @@ export function ScanningPanel() {
                       >
                         <div>
                           <span style={{ ...mono, color: 'rgba(255,255,255,0.4)', fontSize: '9px' }}>{r.category}</span>
-                          <p style={{ ...raj, color: 'rgba(255,255,255,0.8)', fontSize: '12px', marginTop: 2 }}>{r.value}</p>
+                          <p style={{ ...raj, color: 'rgba(255,255,255,0.85)', fontSize: '12px', marginTop: 2 }}>{r.value}</p>
                         </div>
                         <div
                           className="px-2 py-0.5 rounded-lg flex items-center gap-1 flex-shrink-0"
@@ -326,8 +339,8 @@ export function ScanningPanel() {
                           }}
                         >
                           <Zap className="w-2.5 h-2.5" style={{ color: statusColor[r.status as keyof typeof statusColor] }} />
-                          <span style={{ ...mono, color: statusColor[r.status as keyof typeof statusColor], fontSize: '9px', textTransform: 'uppercase' }}>
-                            {r.status}
+                          <span style={{ ...mono, color: statusColor[r.status as keyof typeof statusColor], fontSize: '9px' }}>
+                            {statusLabel[r.status as keyof typeof statusLabel]}
                           </span>
                         </div>
                       </motion.div>
@@ -341,10 +354,10 @@ export function ScanningPanel() {
                       >
                         <CheckCircle className="w-5 h-5 mx-auto mb-1.5" style={{ color: '#22c55e' }} />
                         <p style={{ ...orb, color: '#22c55e', fontSize: '11px', letterSpacing: '0.15em' }}>
-                          SCAN COMPLETE
+                          QUÉT HỆ THỐNG HOÀN TẤT
                         </p>
-                        <p style={{ ...raj, color: 'rgba(34,197,94,0.7)', fontSize: '11px', marginTop: 4 }}>
-                          All systems operational. No anomalies detected.
+                        <p style={{ ...raj, color: 'rgba(34,197,94,0.8)', fontSize: '11px', marginTop: 4 }}>
+                          Tất cả hệ thống vận hành hoàn hảo. Không phát hiện mối đe dọa.
                         </p>
                       </motion.div>
                     )}

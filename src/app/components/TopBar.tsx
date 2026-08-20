@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
-import { Wifi, Shield, Cpu, Settings, Grid, Hand, Bell, Activity } from 'lucide-react';
+import { Wifi, Shield, Cpu, Settings, Grid, Hand, Bell, Activity, Volume2, VolumeX } from 'lucide-react';
 import { useApp } from '../context/AppContext';
+import { sounds } from '../services/sound';
 
 const orb = { fontFamily: 'Orbitron, sans-serif' };
 const mono = { fontFamily: 'Share Tech Mono, monospace' };
@@ -9,16 +10,24 @@ const raj = { fontFamily: 'Rajdhani, sans-serif' };
 
 export function TopBar() {
   const [time, setTime] = useState(new Date());
-  const { setSettingsOpen, setAppGridOpen, setGestureOpen, aiState, addNotification } = useApp();
+  const {
+    setSettingsOpen,
+    setAppGridOpen,
+    setGestureOpen,
+    aiState,
+    addNotification,
+    soundEnabled,
+    setSoundEnabled,
+  } = useApp();
 
   useEffect(() => {
     const interval = setInterval(() => setTime(new Date()), 1000);
     return () => clearInterval(interval);
   }, []);
 
-  const fmtTime = (d: Date) => d.toLocaleTimeString('en-US', { hour12: false });
+  const fmtTime = (d: Date) => d.toLocaleTimeString('vi-VN', { hour12: false });
   const fmtDate = (d: Date) =>
-    d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
+    d.toLocaleDateString('vi-VN', { weekday: 'short', day: '2-digit', month: '2-digit', year: 'numeric' });
 
   const stateColor = {
     idle: '#00f5ff',
@@ -28,10 +37,10 @@ export function TopBar() {
   }[aiState];
 
   const stateLabel = {
-    idle: 'STANDBY',
-    listening: 'LISTENING',
-    processing: 'PROCESSING',
-    responding: 'RESPONDING',
+    idle: 'CHỜ LỆNH',
+    listening: 'ĐANG LẮNG NGHE',
+    processing: 'ĐANG XỬ LÝ',
+    responding: 'ĐANG PHẢN HỒI',
   }[aiState];
 
   return (
@@ -69,7 +78,7 @@ export function TopBar() {
           <div style={{ ...orb, color: '#00f5ff', fontSize: '13px', letterSpacing: '0.15em', textShadow: '0 0 10px rgba(0,245,255,0.6)' }}>
             CAT
           </div>
-          <div style={{ ...mono, color: 'rgba(0,245,255,0.45)', fontSize: '10px' }}>OS v3.7.2 — ALPHA</div>
+          <div style={{ ...mono, color: 'rgba(0,245,255,0.45)', fontSize: '10px' }}>HĐH v3.7.2 — ALPHA</div>
         </div>
       </div>
 
@@ -92,15 +101,15 @@ export function TopBar() {
       {/* Center status row */}
       <div className="flex-1 flex items-center justify-center gap-6">
         {[
-          { icon: Wifi, label: 'ONLINE', val: '99.9%', color: '#22c55e' },
-          { icon: Shield, label: 'SECURE', val: 'AES-256', color: '#00f5ff' },
-          { icon: Cpu, label: 'LOAD', val: '42%', color: '#a855f7' },
-          { icon: Activity, label: 'NET', val: '1.2GB/s', color: '#0ea5e9' },
+          { icon: Wifi, label: 'TRỰC TUYẾN', val: '99.9%', color: '#22c55e' },
+          { icon: Shield, label: 'BẢO MẬT', val: 'AES-256', color: '#00f5ff' },
+          { icon: Cpu, label: 'TẢI CPU', val: '42%', color: '#a855f7' },
+          { icon: Activity, label: 'BĂNG THÔNG', val: '1.2GB/s', color: '#0ea5e9' },
         ].map(({ icon: Icon, label, val, color }) => (
           <div key={label} className="flex items-center gap-1.5">
             <Icon className="w-3 h-3" style={{ color }} />
             <span style={{ ...mono, color: 'rgba(255,255,255,0.4)', fontSize: '10px' }}>{label}</span>
-            <span style={{ ...mono, color, fontSize: '10px' }}>{val}</span>
+            <span style={{ ...mono, color: 'rgba(255,255,255,0.85)', fontSize: '10px' }}>{val}</span>
           </div>
         ))}
       </div>
@@ -118,17 +127,74 @@ export function TopBar() {
 
       {/* Quick actions */}
       <div className="flex items-center gap-2 flex-shrink-0">
+        {/* Sound Toggle */}
+        <motion.button
+          whileHover={{ scale: 1.15 }}
+          whileTap={{ scale: 0.9 }}
+          onClick={() => {
+            setSoundEnabled(!soundEnabled);
+            addNotification({
+              type: 'info',
+              title: 'Âm thanh Hệ thống',
+              message: !soundEnabled ? 'Đã bật hiệu ứng âm thanh Sci-Fi.' : 'Đã tắt âm thanh.',
+            });
+          }}
+          className="w-8 h-8 rounded-lg flex items-center justify-center cursor-pointer"
+          style={{
+            background: soundEnabled ? 'rgba(0,245,255,0.1)' : 'rgba(255,255,255,0.04)',
+            border: `1px solid ${soundEnabled ? 'rgba(0,245,255,0.4)' : 'rgba(255,255,255,0.15)'}`,
+          }}
+          title={soundEnabled ? 'Tắt âm thanh' : 'Bật âm thanh'}
+        >
+          {soundEnabled ? (
+            <Volume2 className="w-4 h-4 text-cyan-400" />
+          ) : (
+            <VolumeX className="w-4 h-4 text-gray-400" />
+          )}
+        </motion.button>
+
         {[
           {
             icon: Bell,
-            action: () =>
-              addNotification({ type: 'info', title: 'System Alert', message: 'All systems nominal. No anomalies detected.' }),
+            action: () => {
+              sounds.playClick();
+              addNotification({
+                type: 'info',
+                title: 'Cảnh báo Hệ thống',
+                message: 'Tất cả hệ thống ở trạng thái tối ưu. Không phát hiện bất thường.',
+              });
+            },
             color: '#f59e0b',
+            title: 'Thông báo',
           },
-          { icon: Hand, action: () => setGestureOpen(true), color: '#00f5ff' },
-          { icon: Grid, action: () => setAppGridOpen(true), color: '#00f5ff' },
-          { icon: Settings, action: () => setSettingsOpen(true), color: '#00f5ff' },
-        ].map(({ icon: Icon, action, color }, i) => (
+          {
+            icon: Hand,
+            action: () => {
+              sounds.playClick();
+              setGestureOpen(true);
+            },
+            color: '#00f5ff',
+            title: 'Cử chỉ không gian',
+          },
+          {
+            icon: Grid,
+            action: () => {
+              sounds.playClick();
+              setAppGridOpen(true);
+            },
+            color: '#00f5ff',
+            title: 'Lưới ứng dụng',
+          },
+          {
+            icon: Settings,
+            action: () => {
+              sounds.playClick();
+              setSettingsOpen(true);
+            },
+            color: '#00f5ff',
+            title: 'Cài đặt hệ thống',
+          },
+        ].map(({ icon: Icon, action, color, title }, i) => (
           <motion.button
             key={i}
             whileHover={{ scale: 1.15 }}
@@ -140,6 +206,7 @@ export function TopBar() {
               border: '1px solid rgba(0,245,255,0.15)',
               transition: 'box-shadow 0.2s',
             }}
+            title={title}
             onMouseEnter={e => {
               (e.currentTarget as HTMLElement).style.boxShadow = `0 0 12px ${color}40`;
               (e.currentTarget as HTMLElement).style.borderColor = `${color}60`;

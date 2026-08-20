@@ -1,18 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
-import { AreaChart, Area, XAxis, YAxis, ResponsiveContainer, Tooltip } from 'recharts';
+import { AreaChart, Area, ResponsiveContainer } from 'recharts';
 import { Activity, Cpu, Database, Wifi, Thermometer, Zap } from 'lucide-react';
 
 const orb = { fontFamily: 'Orbitron, sans-serif' };
 const mono = { fontFamily: 'Share Tech Mono, monospace' };
 const raj = { fontFamily: 'Rajdhani, sans-serif' };
-
-const glassPanel = {
-  background: 'rgba(0, 12, 30, 0.6)',
-  backdropFilter: 'blur(16px)',
-  border: '1px solid rgba(0, 245, 255, 0.15)',
-  borderRadius: '12px',
-};
 
 function generate(base: number, variance: number) {
   return Math.max(5, Math.min(99, base + (Math.random() - 0.5) * variance * 2));
@@ -111,13 +104,13 @@ export function SystemMonitor() {
   const fmtUptime = (s: number) => {
     const h = Math.floor(s / 3600);
     const m = Math.floor((s % 3600) / 60);
-    return `${h}h ${m}m`;
+    return `${h} giờ ${m} phút`;
   };
 
   const metrics = [
     { label: 'CPU', value: cpu[cpu.length - 1].v, unit: '%', color: '#00f5ff', icon: <Cpu className="w-3 h-3" />, data: cpu },
-    { label: 'MEMORY', value: mem[mem.length - 1].v, unit: '%', color: '#a855f7', icon: <Database className="w-3 h-3" />, data: mem },
-    { label: 'NETWORK', value: net[net.length - 1].v, unit: '%', color: '#0ea5e9', icon: <Wifi className="w-3 h-3" />, data: net },
+    { label: 'BỘ NHỚ', value: mem[mem.length - 1].v, unit: '%', color: '#a855f7', icon: <Database className="w-3 h-3" />, data: mem },
+    { label: 'MẠNG', value: net[net.length - 1].v, unit: '%', color: '#0ea5e9', icon: <Wifi className="w-3 h-3" />, data: net },
     { label: 'GPU', value: gpu[gpu.length - 1].v, unit: '%', color: '#f59e0b', icon: <Zap className="w-3 h-3" />, data: gpu },
   ];
 
@@ -130,7 +123,7 @@ export function SystemMonitor() {
       <div className="flex items-center justify-between flex-shrink-0">
         <div className="flex items-center gap-2">
           <Activity className="w-4 h-4" style={{ color: '#00f5ff' }} />
-          <span style={{ ...orb, color: '#00f5ff', fontSize: '11px', letterSpacing: '0.15em' }}>SYSTEM MONITOR</span>
+          <span style={{ ...orb, color: '#00f5ff', fontSize: '11px', letterSpacing: '0.15em' }}>GIÁM SÁT HỆ THỐNG</span>
         </div>
         <div className="flex items-center gap-1.5">
           <motion.div
@@ -139,7 +132,7 @@ export function SystemMonitor() {
             className="w-1.5 h-1.5 rounded-full"
             style={{ background: '#22c55e' }}
           />
-          <span style={{ ...mono, color: '#22c55e', fontSize: '9px' }}>LIVE</span>
+          <span style={{ ...mono, color: '#22c55e', fontSize: '9px' }}>TRỰC TIẾP</span>
         </div>
       </div>
 
@@ -173,9 +166,9 @@ export function SystemMonitor() {
           </div>
         </div>
         <div className="flex flex-col gap-0.5">
-          <span style={{ ...raj, color: 'rgba(255,255,255,0.7)', fontSize: '13px' }}>System Health</span>
-          <span style={{ ...mono, color: 'rgba(255,255,255,0.35)', fontSize: '10px' }}>
-            UPTIME: {fmtUptime(uptime)}
+          <span style={{ ...raj, color: 'rgba(255,255,255,0.85)', fontSize: '13px' }}>Chỉ số Sức khỏe</span>
+          <span style={{ ...mono, color: 'rgba(255,255,255,0.4)', fontSize: '10px' }}>
+            HOẠT ĐỘNG: {fmtUptime(uptime)}
           </span>
           <div className="flex items-center gap-2 mt-0.5">
             <Thermometer className="w-3 h-3" style={{ color: '#f59e0b' }} />
@@ -184,7 +177,7 @@ export function SystemMonitor() {
         </div>
         <div className="ml-auto">
           <span style={{ ...raj, color: getHealthColor(overallHealth), fontSize: '12px' }}>
-            {overallHealth < 60 ? 'OPTIMAL' : overallHealth < 80 ? 'MODERATE' : 'HIGH LOAD'}
+            {overallHealth < 60 ? 'TỐI ƯU' : overallHealth < 80 ? 'BÌNH THƯỜNG' : 'TẢI CAO'}
           </span>
         </div>
       </div>
@@ -202,7 +195,7 @@ export function SystemMonitor() {
         style={{ background: 'rgba(0,8,20,0.5)', border: '1px solid rgba(0,245,255,0.08)' }}
       >
         <div className="flex items-center justify-between mb-2">
-          <span style={{ ...mono, color: 'rgba(0,245,255,0.6)', fontSize: '10px' }}>TOP PROCESSES</span>
+          <span style={{ ...mono, color: 'rgba(0,245,255,0.6)', fontSize: '10px' }}>TIẾN TRÌNH HÀNG ĐẦU</span>
         </div>
         {[
           { name: 'cat-core.exe', cpu: 12.4, mem: 842 },
@@ -211,7 +204,7 @@ export function SystemMonitor() {
           { name: 'render-host', cpu: 3.8, mem: 512 },
         ].map(p => (
           <div key={p.name} className="flex items-center justify-between py-1" style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
-            <span style={{ ...mono, color: 'rgba(255,255,255,0.5)', fontSize: '9px' }}>{p.name}</span>
+            <span style={{ ...mono, color: 'rgba(255,255,255,0.6)', fontSize: '9px' }}>{p.name}</span>
             <div className="flex gap-3">
               <span style={{ ...mono, color: '#00f5ff', fontSize: '9px' }}>{p.cpu}%</span>
               <span style={{ ...mono, color: '#a855f7', fontSize: '9px' }}>{p.mem}MB</span>

@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useCallback, useRef } from 'react';
+import React, { createContext, useContext, useState, useCallback, useRef, useEffect } from 'react';
 import {
   AIConfig,
   getStoredAIConfig,
@@ -6,6 +6,7 @@ import {
   callOpenAIChatCompletion,
   ChatMessageParam,
 } from '../services/openai';
+import { sounds } from '../services/sound';
 
 export type AIState = 'idle' | 'listening' | 'processing' | 'responding';
 
@@ -59,6 +60,10 @@ interface AppContextType {
   aiConfig: AIConfig;
   updateAIConfig: (cfg: Partial<AIConfig>) => void;
   sendAIChat: (text: string) => Promise<void>;
+  soundEnabled: boolean;
+  setSoundEnabled: (v: boolean) => void;
+  soundVolume: number;
+  setSoundVolume: (v: number) => void;
 }
 
 const AppContext = createContext<AppContextType | null>(null);
@@ -67,19 +72,19 @@ const initialMessages: Message[] = [
   {
     id: '1',
     type: 'ai',
-    text: 'CAT v3.7 initialized. Neural core online. All subsystems operational. Voice recognition active. How can I assist you today?',
+    text: 'Hệ điều hành CAT v3.7 đã khởi động thành công. Lõi nơ-ron trực tuyến. Toàn bộ hệ thống thứ cấp hoạt động bình thường. Nhận diện giọng nói đang kích hoạt. Tôi có thể hỗ trợ gì cho bạn hôm nay?',
     timestamp: new Date(Date.now() - 8000),
   },
   {
     id: '2',
     type: 'user',
-    text: 'Run system diagnostics.',
+    text: 'Kiểm tra chẩn đoán toàn bộ hệ thống.',
     timestamp: new Date(Date.now() - 5000),
   },
   {
     id: '3',
     type: 'ai',
-    text: 'Diagnostics complete. CPU: 42% nominal. Memory: 6.2GB/16GB. Network: 847ms latency. Security: All encryption layers intact. No anomalies detected.',
+    text: 'Chẩn đoán hoàn tất. CPU: 42% định mức. Bộ nhớ RAM: 6.2GB / 16GB. Mạng: Độ trễ 42ms. Bảo mật: Toàn bộ các lớp mã hóa AES-256 nguyên vẹn. Không phát hiện bất thường.',
     timestamp: new Date(Date.now() - 3000),
   },
 ];
@@ -87,62 +92,62 @@ const initialMessages: Message[] = [
 const initialMemories: MemoryItem[] = [
   {
     id: '1',
-    title: 'System Configuration',
-    content: 'Primary interface configured with OpenAI-compatible completions. Performance mode: Ultra. Voice recognition sensitivity: 0.92.',
-    tags: ['system', 'config'],
+    title: 'Cấu hình Hệ thống',
+    content: 'Giao diện chính kết nối API chuẩn OpenAI Completions. Chế độ hiệu năng: Cực đại (Ultra). Độ nhạy nhận diện giọng nói: 0.92.',
+    tags: ['hệ thống', 'cấu hình'],
     timestamp: new Date(Date.now() - 86400000 * 2),
     synced: true,
   },
   {
     id: '2',
-    title: 'Voice Command Macro',
-    content: 'Created shortcut: "Deploy" = git push origin main && run deploy --production',
-    tags: ['voice', 'dev'],
+    title: 'Lệnh Tắt Giọng Nói',
+    content: 'Tạo shortcut: "Triển khai" = git push origin main && chạy lệnh deploy production lên Cloudflare.',
+    tags: ['giọng nói', 'lập trình'],
     timestamp: new Date(Date.now() - 86400000),
     synced: true,
   },
   {
     id: '3',
-    title: 'Research: Quantum Computing',
-    content: 'Summarized 14 papers on quantum decoherence and error correction. Key finding: surface codes most viable for near-term QC implementation.',
-    tags: ['research', 'quantum'],
+    title: 'Nghiên cứu: Điện toán Lượng tử',
+    content: 'Tổng hợp 14 bài báo khoa học về giảm kết hợp lượng tử và sửa lỗi. Kết luận: Mã bề mặt khả thi nhất cho triển khai thực tế.',
+    tags: ['nghiên cứu', 'lượng tử'],
     timestamp: new Date(Date.now() - 3600000 * 5),
     synced: false,
   },
   {
     id: '4',
-    title: 'API Integration Log',
-    content: 'OpenAI Completion API standard integrated. Custom Base URL & Model routing enabled. Secure vault configured.',
-    tags: ['api', 'config'],
+    title: 'Nhật ký Tích hợp API',
+    content: 'Đã tích hợp API Xkiro (Gwen 3.8 max), OpenAI, OpenRouter. Khóa bảo mật được mã hóa trong kho lưu trữ an toàn.',
+    tags: ['api', 'bảo mật'],
     timestamp: new Date(Date.now() - 3600000 * 2),
     synced: true,
   },
   {
     id: '5',
-    title: 'User Preference Update',
-    content: 'Dark mode holographic theme selected. Response verbosity: detailed. Gesture sensitivity calibrated to user profile.',
-    tags: ['preferences', 'ui'],
+    title: 'Tùy chọn Người dùng',
+    content: 'Giao diện Holographic Dark Mode. Độ chi tiết phản hồi: Chuyên sâu. Cảm biến cử chỉ không gian đã được hiệu chuẩn.',
+    tags: ['tùy chọn', 'giao diện'],
     timestamp: new Date(Date.now() - 1800000),
     synced: true,
   },
 ];
 
 const BUILTIN_COMMAND_RESPONSES: Record<string, string> = {
-  scan: 'Initiating full-spectrum environmental scan. Holographic display activating...',
-  status: 'All systems nominal. CPU: 42% | Memory: 62% | Network: Online | Security: AES-256 Active | Uptime: 4h 12m.',
-  time: `Current time: ${new Date().toLocaleTimeString()}. Temporal reference synchronized with UTC+0.`,
-  hello: 'Hello! CAT is fully operational and ready to assist. All neural pathways active.',
-  help: 'Available commands: scan, status, time, hello, settings, apps, gesture, weather, memory, encrypt. You can also chat directly with the connected AI model.',
-  settings: 'Opening system configuration panel. Initializing secure environment...',
-  apps: 'Launching application grid interface. Holographic display ready.',
-  gesture: 'Activating gesture recognition module. Camera feed initializing...',
-  weather: 'Fetching atmospheric data... Conditions: Clear skies, 22°C, Humidity: 58%, Wind: 12 km/h NE. Air quality: Good.',
-  memory: 'Memory core accessed. 5 records found. Local: Synced | Cloud: Active | Git: Pushed.',
-  encrypt: 'Running encryption protocol... AES-256 verified. RSA-4096 key exchange complete. All channels secure.',
-  deploy: 'Initiating deployment sequence. Building Docker container... Pushing to registry... Deployed to production. Zero downtime achieved.',
-  analyze: 'Running deep neural analysis... Pattern recognition active... Anomaly detection: None found. Confidence: 98.7%.',
-  shutdown: 'Shutdown sequence initiated. Saving session state... Encrypting memory... Graceful shutdown in 30 seconds. Say "cancel" to abort.',
-  cancel: 'Shutdown sequence aborted. All systems remain active. Standing by for further commands.',
+  scan: 'Đang kích hoạt quét toàn diện môi trường và quang phổ. Màn hình Hologram 3D đang hiển thị...',
+  status: 'Tất cả hệ thống ở mức tối ưu. CPU: 42% | RAM: 62% | Mạng: Trực tuyến | Bảo mật: AES-256 Đang chạy | Thời gian hoạt động: 4h 12m.',
+  time: `Thời gian hiện tại: ${new Date().toLocaleTimeString('vi-VN')}. Đồng bộ hóa tham chiếu chuẩn UTC+7.`,
+  hello: 'Xin chào! Hệ điều hành AI CAT đã sẵn sàng phục vụ. Toàn bộ mạng nơ-ron đang hoạt động.',
+  help: 'Các lệnh khả dụng: quét (scan), trạng thái (status), thời gian (time), xin chào (hello), cài đặt (settings), ứng dụng (apps), cử chỉ (gesture), thời tiết (weather), bộ nhớ (memory), bảo mật (encrypt). Bạn cũng có thể trò chuyện trực tiếp với AI.',
+  settings: 'Đang mở bảng cấu hình hệ thống và kho khóa API...',
+  apps: 'Đang khởi chạy lưới ứng dụng Holographic...',
+  gesture: 'Đang kích hoạt module nhận diện cử chỉ không gian...',
+  weather: 'Đang cập nhật dữ liệu khí quyển... Điều kiện: Trời quang, 28°C, Độ ẩm: 65%, Gió nhẹ. Chất lượng không khí: Tốt.',
+  memory: 'Đã truy cập lõi bộ nhớ tri thức. 5 bản ghi sẵn sàng. Bộ nhớ cục bộ: Đã đồng bộ | Đám mây: Hoạt động | Git: Đã sao lưu.',
+  encrypt: 'Đang chạy quy trình bảo mật... Xác thực mã hóa AES-256 hoàn tất. Khóa RSA-4096 đã thiết lập. Tất cả kênh được bảo vệ an toàn.',
+  deploy: 'Bắt đầu quy trình triển khai... Đóng gói container... Đẩy lên hệ thống Cloudflare Pages. Triển khai thành công, không gián đoạn dịch vụ.',
+  analyze: 'Đang thực hiện phân tích nơ-ron chuyên sâu... Nhận diện mẫu hoạt động... Không phát hiện bất thường. Độ tin cậy: 99.2%.',
+  shutdown: 'Khởi động quy trình tắt an toàn. Đang lưu trạng thái phiên làm việc... Mã hóa bộ nhớ... Tự động tắt sau 30 giây. Gõ "hủy" để dừng.',
+  cancel: 'Đã hủy lệnh tắt hệ thống. Toàn bộ tiến trình duy trì hoạt động.',
 };
 
 export function AppProvider({ children }: { children: React.ReactNode }) {
@@ -158,7 +163,29 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [memories] = useState<MemoryItem[]>(initialMemories);
   const [aiConfig, setAiConfig] = useState<AIConfig>(getStoredAIConfig);
 
+  const [soundEnabled, setSoundEnabledState] = useState<boolean>(() => sounds.isEnabled());
+  const [soundVolume, setSoundVolumeState] = useState<number>(() => sounds.getVolume());
+
   const abortControllerRef = useRef<AbortController | null>(null);
+
+  // Play startup sound on first load
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      sounds.playStartup();
+    }, 500);
+    return () => clearTimeout(timer);
+  }, []);
+
+  const setSoundEnabled = useCallback((v: boolean) => {
+    sounds.setEnabled(v);
+    setSoundEnabledState(v);
+    if (v) sounds.playSuccess();
+  }, []);
+
+  const setSoundVolume = useCallback((v: number) => {
+    sounds.setVolume(v);
+    setSoundVolumeState(v);
+  }, []);
 
   const updateAIConfig = useCallback((cfg: Partial<AIConfig>) => {
     setAiConfig(prev => {
@@ -179,6 +206,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const clearMessages = useCallback(() => {
+    sounds.playClick();
     setMessages([]);
   }, []);
 
@@ -189,6 +217,15 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const addNotification = useCallback((n: Omit<Notification, 'id'>) => {
     const id = Date.now().toString() + Math.random().toString().slice(2, 6);
     setNotifications(prev => [...prev, { ...n, id }]);
+
+    if (n.type === 'error') {
+      sounds.playError();
+    } else if (n.type === 'success') {
+      sounds.playSuccess();
+    } else {
+      sounds.playMessage();
+    }
+
     setTimeout(() => removeNotification(id), 6000);
   }, [removeNotification]);
 
@@ -196,16 +233,18 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     const text = userText.trim();
     if (!text) return;
 
+    sounds.playClick();
     const lower = text.toLowerCase();
 
     // Trigger system action shortcuts
-    if (lower.includes('scan') && !lower.includes('how') && !lower.includes('what')) {
+    if ((lower.includes('quét') || lower.includes('scan')) && !lower.includes('như thế nào')) {
+      sounds.playScan();
       setTimeout(() => setScanningActive(true), 800);
-    } else if (lower.includes('settings') && !lower.includes('how')) {
+    } else if ((lower.includes('cài đặt') || lower.includes('settings')) && !lower.includes('như thế nào')) {
       setTimeout(() => setSettingsOpen(true), 800);
-    } else if (lower.includes('apps') && !lower.includes('how')) {
+    } else if ((lower.includes('ứng dụng') || lower.includes('apps')) && !lower.includes('như thế nào')) {
       setTimeout(() => setAppGridOpen(true), 800);
-    } else if (lower.includes('gesture') && !lower.includes('how')) {
+    } else if ((lower.includes('cử chỉ') || lower.includes('gesture')) && !lower.includes('như thế nào')) {
       setTimeout(() => setGestureOpen(true), 800);
     }
 
@@ -225,6 +264,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         { id: aiMsgId, type: 'ai', text: '', timestamp: new Date(), isStreaming: true },
       ]);
       setAiState('responding');
+      sounds.playMessage();
 
       if (abortControllerRef.current) {
         abortControllerRef.current.abort();
@@ -253,40 +293,51 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           },
         });
 
-        updateMessage(aiMsgId, accumulatedText || 'Response received.', false);
+        updateMessage(aiMsgId, accumulatedText || 'Đã nhận phản hồi.', false);
+        sounds.playSuccess();
         addNotification({
           type: 'success',
           title: `CAT (${aiConfig.model})`,
-          message: 'AI response completed successfully.',
+          message: 'Phản hồi từ mô hình AI đã hoàn tất.',
         });
       } catch (err: any) {
         if (err.name === 'AbortError') return;
 
-        console.error('AI completion error:', err);
-        const errMsg = `[Connection Error]: ${err.message || 'Failed to reach API endpoint.'}\n\nFalling back to neural standby protocol.`;
+        console.error('Lỗi AI completion:', err);
+        sounds.playError();
+        const errMsg = `[Lỗi Kết Nối]: ${err.message || 'Không thể kết nối đến máy chủ API.'}\n\nĐang kích hoạt quy trình dự phòng nơ-ron nội bộ.`;
         updateMessage(aiMsgId, errMsg, false);
         addNotification({
           type: 'error',
-          title: 'API Error',
-          message: err.message || 'Failed to communicate with OpenAI completions API',
+          title: 'Lỗi API',
+          message: err.message || 'Không thể kết nối đến API OpenAI Completions',
         });
       } finally {
         setTimeout(() => setAiState('idle'), 1200);
       }
     } else {
       // Fallback: Builtin simulated response when no API key is provided
-      const matchedKey = Object.keys(BUILTIN_COMMAND_RESPONSES).find(k => lower.includes(k));
+      const matchedKey = Object.keys(BUILTIN_COMMAND_RESPONSES).find(k =>
+        lower.includes(k) || (k === 'scan' && lower.includes('quét')) ||
+        (k === 'status' && lower.includes('trạng thái')) ||
+        (k === 'hello' && lower.includes('chào')) ||
+        (k === 'help' && lower.includes('trợ giúp')) ||
+        (k === 'weather' && lower.includes('thời tiết')) ||
+        (k === 'settings' && lower.includes('cài đặt'))
+      );
+
       const simulatedReply = matchedKey
         ? BUILTIN_COMMAND_RESPONSES[matchedKey]
-        : `Command received: "${text}". Neural analysis complete. (Tip: Enter your OpenAI/OpenRouter/Groq API key in Settings for live LLM completions).`;
+        : `Đã nhận lệnh: "${text}". Phân tích nơ-ron hoàn tất. (Mẹo: Nhập API Key Xkiro/OpenAI trong mục Cài Đặt để trò chuyện trực tiếp với mô hình AI).`;
 
       setTimeout(() => {
         setAiState('responding');
+        sounds.playMessage();
         addMessage({ type: 'ai', text: simulatedReply });
         addNotification({
           type: 'info',
-          title: 'CAT Response',
-          message: 'Simulated response generated. Set API key in Settings for live LLM.',
+          title: 'Phản hồi từ CAT',
+          message: 'Đã tạo phản hồi. Cấu hình API Key trong Cài đặt để dùng AI trực tiếp.',
         });
         setTimeout(() => setAiState('idle'), 1500);
       }, 1000);
@@ -321,6 +372,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         aiConfig,
         updateAIConfig,
         sendAIChat,
+        soundEnabled,
+        setSoundEnabled,
+        soundVolume,
+        setSoundVolume,
       }}
     >
       {children}

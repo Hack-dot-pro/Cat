@@ -2,6 +2,7 @@ import React from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { X, Info, CheckCircle, AlertTriangle, XCircle } from 'lucide-react';
 import { useApp, Notification } from '../context/AppContext';
+import { sounds } from '../services/sound';
 
 const mono = { fontFamily: 'Share Tech Mono, monospace' };
 const raj = { fontFamily: 'Rajdhani, sans-serif' };
@@ -55,7 +56,10 @@ function NotifCard({ notif }: { notif: Notification }) {
         <motion.button
           whileHover={{ scale: 1.1 }}
           whileTap={{ scale: 0.9 }}
-          onClick={() => removeNotification(notif.id)}
+          onClick={() => {
+            sounds.playClick();
+            removeNotification(notif.id);
+          }}
           className="w-6 h-6 rounded-lg flex items-center justify-center flex-shrink-0 cursor-pointer"
           style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)' }}
         >

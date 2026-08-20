@@ -1,13 +1,22 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Mic, MicOff, Type, Volume2, Send } from 'lucide-react';
+import { Mic, Type, Volume2, Send } from 'lucide-react';
 import { useApp } from '../context/AppContext';
+import { sounds } from '../services/sound';
 
-const orb = { fontFamily: 'Orbitron, sans-serif' };
 const mono = { fontFamily: 'Share Tech Mono, monospace' };
 const raj = { fontFamily: 'Rajdhani, sans-serif' };
 
 const BAR_COUNT = 32;
+
+const VIETNAMESE_VOICE_COMMANDS = [
+  'Kiểm tra chẩn đoán toàn bộ hệ thống',
+  'Phân tích tài nguyên CPU và bộ nhớ',
+  'Quét môi trường mạng và bảo mật',
+  'Giải thích kiến trúc mô hình Gwen 3.8 max',
+  'Mở bảng cài đặt cấu hình API',
+  'Báo cáo trạng thái các hệ thống nơ-ron',
+];
 
 export function VoiceBar() {
   const { aiState, setAiState, sendAIChat, addNotification } = useApp();
@@ -16,6 +25,7 @@ export function VoiceBar() {
   const [bars, setBars] = useState(() => Array(BAR_COUNT).fill(0.15));
   const [transcript, setTranscript] = useState('');
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const recognitionRef = useRef<any>(null);
 
   const isListening = aiState === 'listening';
   const isProcessing = aiState === 'processing' || aiState === 'responding';
@@ -55,29 +65,50 @@ export function VoiceBar() {
     };
   }, [isListening, isProcessing]);
 
-  const MOCK_VOICE_COMMANDS = [
-    'Run system diagnostics',
-    'Explain quantum computing advances in 2026',
-    'Scan current network environment',
-    'Analyze system memory and telemetry',
-    'Open settings panel and show API configuration',
-    'What is the current status of all neural subsystems?',
-  ];
-
   const toggleListening = async () => {
     if (isListening) {
-      // Pick voice command or speech recognition
-      const cmd = MOCK_VOICE_COMMANDS[Math.floor(Math.random() * MOCK_VOICE_COMMANDS.length)];
+      sounds.playVoiceEnd();
+      if (recognitionRef.current) {
+        try {
+          recognitionRef.current.stop();
+        } catch {}
+      }
+      const cmd = transcript || VIETNAMESE_VOICE_COMMANDS[Math.floor(Math.random() * VIETNAMESE_VOICE_COMMANDS.length)];
       setTranscript(cmd);
       await sendAIChat(cmd);
       setTranscript('');
     } else if (!isProcessing) {
+      sounds.playVoiceStart();
       setAiState('listening');
       setTranscript('');
+
+      // Try browser Web Speech API for Vietnamese
+      const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+      if (SpeechRecognition) {
+        try {
+          const rec = new SpeechRecognition();
+          rec.lang = 'vi-VN';
+          rec.continuous = false;
+          rec.interimResults = true;
+          rec.onresult = (e: any) => {
+            const current = e.results[0][0].transcript;
+            setTranscript(current);
+          };
+          rec.onend = () => {
+            if (aiState === 'listening') {
+              // If stopped talking, submit
+            }
+          };
+          rec.onerror = () => {};
+          rec.start();
+          recognitionRef.current = rec;
+        } catch {}
+      }
+
       addNotification({
         type: 'info',
-        title: 'Voice Active',
-        message: 'Listening for your voice input or command...',
+        title: 'Giọng nói Đang Bật',
+        message: 'Đang lắng nghe lệnh giọng nói tiếng Việt của bạn...',
       });
     }
   };
@@ -94,6 +125,13 @@ export function VoiceBar() {
     listening: '#22c55e',
     processing: '#f59e0b',
     responding: '#a855f7',
+  }[aiState];
+
+  const stateLabel = {
+    idle: 'CHỜ LỆNH',
+    listening: 'ĐANG NGHE',
+    processing: 'ĐANG XỬ LÝ',
+    responding: 'TRẢ LỜI',
   }[aiState];
 
   return (
@@ -113,13 +151,16 @@ export function VoiceBar() {
       <motion.button
         whileHover={{ scale: 1.1 }}
         whileTap={{ scale: 0.9 }}
-        onClick={() => setTextMode(!textMode)}
+        onClick={() => {
+          sounds.playClick();
+          setTextMode(!textMode);
+        }}
         className="w-10 h-10 rounded-xl flex items-center justify-center cursor-pointer flex-shrink-0"
         style={{
           background: textMode ? 'rgba(168,85,247,0.15)' : 'rgba(0,245,255,0.05)',
           border: `1px solid ${textMode ? 'rgba(168,85,247,0.4)' : 'rgba(0,245,255,0.15)'}`,
         }}
-        title={textMode ? 'Switch to Voice Waveform' : 'Switch to Quick Text'}
+        title={textMode ? 'Chuyển sang Sóng âm thanh Giọng nói' : 'Chuyển sang Nhập văn bản nhanh'}
       >
         {textMode ? (
           <Type className="w-4 h-4" style={{ color: '#a855f7' }} />
@@ -169,8 +210,8 @@ export function VoiceBar() {
                   exit={{ opacity: 0, y: 4 }}
                   className="flex-shrink-0 max-w-56 truncate"
                 >
-                  <span style={{ ...raj, color: 'rgba(255,255,255,0.75)', fontSize: '12px' }}>
-                    {transcript}
+                  <span style={{ ...raj, color: 'rgba(255,255,255,0.85)', fontSize: '12px' }}>
+                    "{transcript}"
                   </span>
                 </motion.div>
               )}
@@ -196,7 +237,7 @@ export function VoiceBar() {
                 value={input}
                 onChange={e => setInput(e.target.value)}
                 onKeyDown={e => e.key === 'Enter' && handleTextSubmit()}
-                placeholder="Ask CAT AI anything..."
+                placeholder="Hỏi bất cứ điều gì với CAT AI..."
                 className="flex-1 outline-none bg-transparent"
                 style={{ ...raj, color: 'rgba(255,255,255,0.85)', fontSize: '13px' }}
               />
@@ -218,7 +259,7 @@ export function VoiceBar() {
       <div className="flex flex-col items-center gap-1 flex-shrink-0">
         {/* State label */}
         <span style={{ ...mono, color: stateColor, fontSize: '8px', letterSpacing: '0.1em' }}>
-          {aiState.toUpperCase()}
+          {stateLabel}
         </span>
 
         {/* Mic button */}
