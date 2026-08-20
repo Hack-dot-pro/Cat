@@ -1,7 +1,8 @@
-import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
+import React, { createContext, useContext, useState, useCallback, useEffect, useRef } from 'react';
 import { sounds } from '../services/sound';
 import { openAIService, AISettings, DEFAULT_AI_SETTINGS } from '../services/openai';
 import { deepVoice } from '../services/deepVoice';
+import { speechEngine, SpeechRecognitionResultPayload } from '../services/speechRecognition';
 import { UploadedDocument } from '../components/FilesPanel';
 
 export type AIState = 'idle' | 'listening' | 'processing' | 'responding';
@@ -81,6 +82,17 @@ interface AppContextType {
   setVoiceRate: (r: number) => void;
   speakText: (text: string) => void;
   stopSpeaking: () => void;
+
+  // Speech Recognition & Wake Word ("CAT") States
+  isListeningVoice: boolean;
+  speechTranscript: string;
+  startVoiceRecognition: (continuous?: boolean) => boolean;
+  stopVoiceRecognition: () => void;
+  wakeWordEnabled: boolean;
+  setWakeWordEnabled: (v: boolean) => void;
+  silenceDurationMs: number;
+  setSilenceDurationMs: (ms: number) => void;
+  handleExecuteVoiceCommand: (cmd: string) => Promise<void>;
 }
 
 const AppContext = createContext<AppContextType | null>(null);
@@ -89,7 +101,7 @@ const initialMessages: Message[] = [
   {
     id: '1',
     type: 'ai',
-    text: 'Hệ điều hành **CAT AI v3.8** đã khởi tạo thành công. Lõi nơ-ron đa tầng trực tuyến. Chào mừng **Vinh_Admin** (Vinh)! Giọng đọc nam trầm chậm rãi và chuẩn kết nối OpenAI Completions đã sẵn sàng phục vụ.',
+    text: 'Hệ điều hành **CAT AI v3.8** đã khởi tạo thành công. Lõi nơ-ron đa tầng trực tuyến. Chào mừng **Vinh_Admin** (Vinh)! Giọng đọc nam trầm và nhận diện lệnh gọi **"CAT"** (tự động duyệt sau 1s ngắt quãng) đã sẵn sàng phục vụ.',
     timestamp: new Date(Date.now() - 8000),
   },
   {
@@ -117,9 +129,9 @@ const initialMemories: MemoryItem[] = [
   },
   {
     id: '2',
-    title: 'Giao thức MCP (Model Context Protocol)',
-    content: 'Tích hợp 6 công cụ lõi: Máy tính khoa học, Hệ thống hóa tài liệu, Giám sát hệ thống, Mã hóa SHA-256, Thời gian thực và Trình đọc Web.',
-    tags: ['mcp', 'tools', 'giao thức'],
+    title: 'Nhận diện Giọng nói & Wake Word "CAT"',
+    content: 'Kích hoạt từ khóa "CAT", "CAT AI", "Cát ơi" và tự động gửi lệnh sau 1 giây im lặng (Silence 1s).',
+    tags: ['voice', 'wake_word', 'cat'],
     timestamp: new Date(Date.now() - 86400000),
     synced: true,
   },
@@ -182,6 +194,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [voicePitch, setVoicePitchState] = useState<number>(() => deepVoice.getPitch());
   const [voiceRate, setVoiceRateState] = useState<number>(() => deepVoice.getRate());
 
+  // Speech Recognition & Wake Word ("CAT") States
+  const [isListeningVoice, setIsListeningVoice] = useState<boolean>(false);
+  const [speechTranscript, setSpeechTranscript] = useState<string>('');
+  const [wakeWordEnabled, setWakeWordEnabled] = useState<boolean>(true);
+  const [silenceDurationMs, setSilenceDurationMsState] = useState<number>(1000);
+
   // Subscribe to voice speaking state
   useEffect(() => {
     return deepVoice.subscribe(speaking => {
@@ -215,6 +233,101 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   const stopSpeaking = useCallback(() => {
     deepVoice.stop();
+  }, []);
+
+  const setSilenceDurationMs = useCallback((ms: number) => {
+    speechEngine.setSilenceDuration(ms);
+    setSilenceDurationMsState(ms);
+  }, []);
+
+  // Handle voice command execution
+  const handleExecuteVoiceCommand = useCallback(async (cmdText: string) => {
+    const raw = cmdText.trim();
+    if (!raw) return;
+
+    sounds.playVoiceEnd();
+    setAiState('processing');
+
+    // Add user message
+    setMessages(prev => [...prev, { id: Date.now().toString(), type: 'user', text: raw, timestamp: new Date() }]);
+
+    const lower = raw.toLowerCase();
+    if (lower.includes('quét') || lower.includes('scan')) {
+      setTimeout(() => setScanningActive(true), 600);
+    } else if (lower.includes('cài đặt') || lower.includes('settings')) {
+      setTimeout(() => setSettingsOpen(true), 600);
+    } else if (lower.includes('ứng dụng') || lower.includes('app')) {
+      setTimeout(() => setAppGridOpen(true), 600);
+    } else if (lower.includes('tài liệu') || lower.includes('file')) {
+      setTimeout(() => setFilesOpen(true), 600);
+    } else if (lower.includes('mcp') || lower.includes('tool')) {
+      setTimeout(() => setMcpOpen(true), 600);
+    }
+
+    try {
+      const response = await openAIService.chatCompletion({
+        messages: [{ role: 'user', content: raw }],
+      });
+
+      setAiState('responding');
+      setMessages(prev => [...prev, { id: Date.now().toString(), type: 'ai', text: response, timestamp: new Date() }]);
+
+      if (deepVoice.isEnabled() && deepVoice.isAutoSpeak()) {
+        deepVoice.speak(response);
+      }
+
+      setTimeout(() => setAiState('idle'), 2000);
+    } catch (err) {
+      const fallback = `Tôi đã nhận lệnh bằng giọng nói: "${raw}". Lõi nơ-ron CAT AI đang xử lý theo yêu cầu của ${userName}.`;
+      setAiState('responding');
+      setMessages(prev => [...prev, { id: Date.now().toString(), type: 'ai', text: fallback, timestamp: new Date() }]);
+
+      if (deepVoice.isEnabled() && deepVoice.isAutoSpeak()) {
+        deepVoice.speak(fallback);
+      }
+
+      setTimeout(() => setAiState('idle'), 2000);
+    }
+  }, [userName]);
+
+  // Setup Speech Recognition Listeners
+  useEffect(() => {
+    speechEngine.onStateChange(listening => {
+      setIsListeningVoice(listening);
+      if (listening) {
+        setAiState('listening');
+      } else if (aiState === 'listening') {
+        setAiState('idle');
+      }
+    });
+
+    speechEngine.onWakeWord(() => {
+      sounds.playVoiceStart();
+      setAiState('listening');
+    });
+
+    speechEngine.onInterim(text => {
+      setSpeechTranscript(text);
+    });
+
+    speechEngine.onCommandFinalized((payload: SpeechRecognitionResultPayload) => {
+      setSpeechTranscript('');
+      handleExecuteVoiceCommand(payload.command);
+    });
+  }, [aiState, handleExecuteVoiceCommand]);
+
+  const startVoiceRecognition = useCallback((continuous: boolean = false) => {
+    sounds.playVoiceStart();
+    setAiState('listening');
+    setSpeechTranscript('');
+    return speechEngine.startListening(continuous);
+  }, []);
+
+  const stopVoiceRecognition = useCallback(() => {
+    sounds.playVoiceEnd();
+    speechEngine.stopListening();
+    setSpeechTranscript('');
+    setAiState('idle');
   }, []);
 
   // Play startup sound on first load
@@ -296,6 +409,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       voicePitch, setVoicePitch,
       voiceRate, setVoiceRate,
       speakText, stopSpeaking,
+      isListeningVoice, speechTranscript,
+      startVoiceRecognition, stopVoiceRecognition,
+      wakeWordEnabled, setWakeWordEnabled,
+      silenceDurationMs, setSilenceDurationMs,
+      handleExecuteVoiceCommand,
     }}>
       {children}
     </AppContext.Provider>

@@ -51,16 +51,29 @@ class DeepVoiceEngine {
     // Priority matching for best Vietnamese Male voice
     const viVoices = this.voices.filter(v => v.lang.includes('vi') || v.lang.includes('VI'));
 
-    // 1. Check for specific male Vietnamese voices
-    const maleVi = viVoices.find(v =>
-      v.name.toLowerCase().includes('nam') ||
-      v.name.toLowerCase().includes('minh') ||
-      v.name.toLowerCase().includes('male') ||
-      v.name.toLowerCase().includes('an')
+    // 1. Check for Microsoft Edge Natural Male Vietnamese Voice
+    const edgeNaturalNam = viVoices.find(
+      v => v.name.toLowerCase().includes('nam') && (v.name.toLowerCase().includes('natural') || v.name.toLowerCase().includes('online'))
     );
 
-    if (maleVi) {
+    // 2. Check for any dedicated male Vietnamese voices (Nam, Minh, An)
+    const maleVi = viVoices.find(
+      v =>
+        v.name.toLowerCase().includes('nam') ||
+        v.name.toLowerCase().includes('minh') ||
+        v.name.toLowerCase().includes('male') ||
+        v.name.toLowerCase().includes('an')
+    );
+
+    // 3. Google Vietnamese Neural Voice
+    const googleVi = viVoices.find(v => v.name.toLowerCase().includes('google'));
+
+    if (edgeNaturalNam) {
+      this.selectedVoice = edgeNaturalNam;
+    } else if (maleVi) {
       this.selectedVoice = maleVi;
+    } else if (googleVi) {
+      this.selectedVoice = googleVi;
     } else if (viVoices.length > 0) {
       this.selectedVoice = viVoices[0];
     } else {
